@@ -159,7 +159,7 @@ export default function Landing({ onLogin }: LandingProps) {
           </div>
         </div>
 
-        <div className="landing-features" style={{marginTop: '300px'}}> 
+        <div className="landing-features" style={{marginTop: '4rem'}}> 
           <div className="feature">
             <span className="feature-icon">🏠</span>
             <h3>Create Rooms</h3>
