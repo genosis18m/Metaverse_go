@@ -785,7 +785,7 @@ body {
 }
 
 .switch {
-  transform: translateY(-200px);
+  /* transform: translateY(-200px); Removed to fix centering */
   position: relative;
   display: flex;
   flex-direction: column;
@@ -794,6 +794,7 @@ body {
   gap: 30px;
   width: 50px;
   height: 20px;
+  margin-top: 2rem; /* Add some space from hero */
 }
 
 .card-side::before {
