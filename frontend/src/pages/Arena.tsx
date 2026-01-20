@@ -146,13 +146,28 @@ export default function Arena({ token, userId }: ArenaProps) {
   }
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (document.activeElement === chatInputRef.current) return
+    const isChatFocused = document.activeElement === chatInputRef.current
     
-    switch (e.key) {
-      case 'ArrowUp': case 'w': case 'W': handleMove(0, -1); break
-      case 'ArrowDown': case 's': case 'S': handleMove(0, 1); break
-      case 'ArrowLeft': case 'a': case 'A': handleMove(-1, 0); break
-      case 'ArrowRight': case 'd': case 'D': handleMove(1, 0); break
+    // Arrow keys always work for movement (even while typing)
+    if (e.key.startsWith('Arrow')) {
+      e.preventDefault()
+      switch (e.key) {
+        case 'ArrowUp': handleMove(0, -1); break
+        case 'ArrowDown': handleMove(0, 1); break
+        case 'ArrowLeft': handleMove(-1, 0); break
+        case 'ArrowRight': handleMove(1, 0); break
+      }
+      return
+    }
+    
+    // WASD only works when chat is not focused
+    if (!isChatFocused) {
+      switch (e.key) {
+        case 'w': case 'W': handleMove(0, -1); break
+        case 's': case 'S': handleMove(0, 1); break
+        case 'a': case 'A': handleMove(-1, 0); break
+        case 'd': case 'D': handleMove(1, 0); break
+      }
     }
   }
 
