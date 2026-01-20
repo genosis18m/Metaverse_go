@@ -133,6 +133,47 @@ body {
   cursor: not-allowed;
 }
 
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.divider span {
+  padding: 0 1rem;
+  color: #718096;
+  font-size: 0.85rem;
+}
+
+.google-btn {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.google-btn:hover {
+  background: #f5f5f5;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
 .landing-features {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

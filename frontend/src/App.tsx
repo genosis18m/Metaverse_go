@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import Arena from './pages/Arena'
+import OAuthCallback from './pages/OAuthCallback'
 import './index.css'
 
 function App() {
@@ -31,6 +32,10 @@ function App() {
           element={
             token ? <Navigate to="/dashboard" /> : <Landing onLogin={handleLogin} />
           } 
+        />
+        <Route 
+          path="/oauth-callback" 
+          element={<OAuthCallback onLogin={handleLogin} />} 
         />
         <Route 
           path="/dashboard" 

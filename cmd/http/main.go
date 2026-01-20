@@ -52,6 +52,10 @@ func main() {
 		v1.GET("/elements", handlers.GetElements)
 		v1.GET("/avatars", handlers.GetAvatars)
 
+		// Google OAuth routes
+		v1.GET("/auth/google", handlers.GoogleAuthURL)
+		v1.GET("/auth/google/callback", handlers.GoogleCallback)
+
 		// User routes (requires authentication)
 		user := v1.Group("/user")
 		user.Use(middleware.UserAuth())
