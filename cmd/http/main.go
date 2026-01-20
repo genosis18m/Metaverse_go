@@ -62,6 +62,8 @@ func main() {
 		{
 			user.POST("/metadata", handlers.UpdateMetadata)
 			user.GET("/metadata/bulk", handlers.GetBulkMetadata)
+			user.PUT("/username", handlers.UpdateUsername)
+			user.GET("/profile", handlers.GetProfile)
 		}
 
 		// Space routes (requires authentication)
