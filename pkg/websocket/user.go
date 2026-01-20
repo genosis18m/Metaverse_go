@@ -14,13 +14,15 @@ import (
 
 // User represents a connected WebSocket user
 type User struct {
-	ID      string
-	UserID  string
-	SpaceID string
-	X       int
-	Y       int
-	conn    *websocket.Conn
-	mu      sync.Mutex
+	ID          string
+	UserID      string
+	SpaceID     string
+	SpaceWidth  int
+	SpaceHeight int
+	X           int
+	Y           int
+	conn        *websocket.Conn
+	mu          sync.Mutex
 }
 
 // NewUser creates a new user from a WebSocket connection
@@ -95,20 +97,26 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	}
 
 	u.SpaceID = spaceID
+	u.SpaceWidth = space.Width
+	u.SpaceHeight = space.Height
 
 	// Add user to room
 	GetRoomManager().AddUser(spaceID, u)
 
-	// Set random spawn position
-	u.X = rand.Intn(space.Width)
-	u.Y = rand.Intn(space.Height)
+	// Set random spawn position (ensure it's within bounds and not at edge)
+	u.X = rand.Intn(max(1, space.Width-1)) + 1
+	u.Y = rand.Intn(max(1, space.Height-1)) + 1
 
 	// Get other users in the room
 	roomUsers := GetRoomManager().GetRoomUsers(spaceID)
 	userInfos := make([]UserInfo, 0)
 	for _, user := range roomUsers {
 		if user.ID != u.ID {
-			userInfos = append(userInfos, UserInfo{ID: user.ID})
+			userInfos = append(userInfos, UserInfo{
+				UserID: user.UserID,
+				X:      user.X,
+				Y:      user.Y,
+			})
 		}
 	}
 
@@ -137,6 +145,16 @@ func (u *User) handleMove(payload IncomingMessagePayload) {
 	newX := payload.X
 	newY := payload.Y
 
+	// Check boundaries
+	if newX < 0 || newX >= u.SpaceWidth || newY < 0 || newY >= u.SpaceHeight {
+		// Reject out-of-bounds movement
+		u.Send(OutgoingMessage{
+			Type:    TypeMovementRejected,
+			Payload: MovementPayload{UserID: u.UserID, X: u.X, Y: u.Y},
+		})
+		return
+	}
+
 	// Validate movement (only 1 step at a time)
 	xDisp := abs(u.X - newX)
 	yDisp := abs(u.Y - newY)
@@ -145,10 +163,10 @@ func (u *User) handleMove(payload IncomingMessagePayload) {
 		u.X = newX
 		u.Y = newY
 
-		// Broadcast movement to other users
+		// Broadcast movement to other users with userId
 		GetRoomManager().Broadcast(OutgoingMessage{
 			Type:    TypeMovement,
-			Payload: MovementPayload{X: u.X, Y: u.Y},
+			Payload: MovementPayload{UserID: u.UserID, X: u.X, Y: u.Y},
 		}, u, u.SpaceID)
 		return
 	}
@@ -156,7 +174,7 @@ func (u *User) handleMove(payload IncomingMessagePayload) {
 	// Reject invalid movement
 	u.Send(OutgoingMessage{
 		Type:    TypeMovementRejected,
-		Payload: MovementPayload{X: u.X, Y: u.Y},
+		Payload: MovementPayload{UserID: u.UserID, X: u.X, Y: u.Y},
 	})
 }
 

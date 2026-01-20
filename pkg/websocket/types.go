@@ -47,9 +47,11 @@ type SpawnPoint struct {
 	Y int `json:"y"`
 }
 
-// UserInfo represents basic user info
+// UserInfo represents basic user info with position
 type UserInfo struct {
-	ID string `json:"id"`
+	UserID string `json:"userId"`
+	X      int    `json:"x"`
+	Y      int    `json:"y"`
 }
 
 // UserJoinedPayload represents the payload when a new user joins
@@ -61,8 +63,9 @@ type UserJoinedPayload struct {
 
 // MovementPayload represents the payload for movement events
 type MovementPayload struct {
-	X int `json:"x"`
-	Y int `json:"y"`
+	UserID string `json:"userId"`
+	X      int    `json:"x"`
+	Y      int    `json:"y"`
 }
 
 // UserLeftPayload represents the payload when a user leaves
