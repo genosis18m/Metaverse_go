@@ -74,8 +74,11 @@ export default function Landing({ onLogin }: LandingProps) {
           <div className="card-switch">
             <label className="switch">
               <input type="checkbox" className="toggle" checked={!isLogin} onChange={() => setIsLogin(!isLogin)} />
-              <span className="slider"></span>
-              <span className="card-side"></span>
+              
+              <div className="toggle-wrapper">
+                <span className="slider"></span>
+                <span className="card-side"></span>
+              </div>
               
               <div className="flip-card__inner">
                 {/* LOGIN CARD (FRONT) */}

@@ -785,16 +785,20 @@ body {
 }
 
 .switch {
-  /* transform: translateY(-200px); Removed to fix centering */
+  /* Dimensions removed to allow wrapping content */
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 30px;
+  gap: 30px; /* Space between toggle and card */
+  margin-top: 2rem;
+}
+
+.toggle-wrapper {
+  position: relative;
   width: 50px;
   height: 20px;
-  margin-top: 2rem; /* Add some space from hero */
 }
 
 .card-side::before {
