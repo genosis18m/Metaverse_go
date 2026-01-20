@@ -106,9 +106,9 @@ export default function Landing({ onLogin }: LandingProps) {
                     {error && <p className="error-message" style={{color: 'red', fontSize: '0.8rem'}}>{error}</p>}
                   </form>
                   
-                  <div className="google-auth-container" style={{marginTop: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px'}}>
+                  <div className="google-auth-container">
                      <span style={{fontSize: '0.8rem'}}>or</span>
-                     <button className="google-btn" onClick={() => window.location.href = `${API_URL}/api/v1/auth/google`} style={{width: '100%', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid #ccc', borderRadius: '4px', background: 'white', cursor: 'pointer'}}>
+                     <button className="google-btn" onClick={() => window.location.href = `${API_URL}/api/v1/auth/google`}>
                        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="G" width="20" height="20" />
                        Continue with Google
                      </button>
@@ -143,9 +143,9 @@ export default function Landing({ onLogin }: LandingProps) {
                     {error && <p className="error-message" style={{color: 'red', fontSize: '0.8rem'}}>{error}</p>}
                   </form>
                   
-                  <div className="google-auth-container" style={{marginTop: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px'}}>
+                  <div className="google-auth-container">
                      <span style={{fontSize: '0.8rem'}}>or</span>
-                     <button className="google-btn" onClick={() => window.location.href = `${API_URL}/api/v1/auth/google`} style={{width: '100%', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid #ccc', borderRadius: '4px', background: 'white', cursor: 'pointer'}}>
+                     <button className="google-btn" onClick={() => window.location.href = `${API_URL}/api/v1/auth/google`}>
                        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="G" width="20" height="20" />
                        Continue with Google
                      </button>

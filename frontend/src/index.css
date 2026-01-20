@@ -891,6 +891,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center; /* Added for horizontal centering */
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   background: white; /* Changed from lightgrey */
@@ -925,11 +926,11 @@ body {
 }
 
 .title {
-  margin: 20px 0 20px 0;
   font-size: 25px;
   font-weight: 900;
   text-align: center;
   color: var(--main-color);
+  margin: 0; /* Removed margin, handled by parent gap */
 }
 
 .flip-card__input {
@@ -956,7 +957,6 @@ body {
 }
 
 .flip-card__btn {
-  margin: 20px 0 20px 0;
   width: 120px;
   height: 40px;
   border-radius: 5px;
@@ -968,11 +968,34 @@ body {
   color: var(--font-color);
   cursor: pointer;
   transition: all 0.1s;
+  /* Removed margin */
 }
 
 .flip-card__btn:active {
   box-shadow: 0px 0px var(--main-color);
   transform: translate(3px, 3px);
+}
+
+.google-btn {
+  width: 250px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #ccc; /* Or var(--main-color) for consistency */
+  border-radius: 5px;
+  background: white;
+  cursor: pointer;
+  font-weight: 500;
+  color: #555;
+  transition: background 0.2s;
+  font-size: 15px; /* Match input font size roughly */
+  margin: 0;
+}
+
+.google-btn:hover {
+  background: #f1f1f1;
 }
 
 
