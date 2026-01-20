@@ -101,16 +101,17 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       
       const data = await res.json()
       
-      // Refresh spaces list
-      const spacesRes = await fetch(`${API_URL}/api/v1/space/all`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      const spacesData = await spacesRes.json()
-      setSpaces(spacesData.spaces || [])
+      // OPTIMIZATION: Manually add new room instead of re-fetching
+      const newRoom: Space = {
+        id: data.spaceId,
+        name: newRoomName,
+        dimensions: roomSize,
+      }
+      setSpaces(prev => [...prev, newRoom])
       
       setShowCreateModal(false)
       setNewRoomName('')
-      fetchSpaces()
+      // fetchSpaces() // Removed to speed up UI
       navigate(`/arena/${data.spaceId}`)
     } catch (err: any) {
       setError(err.message)

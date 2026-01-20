@@ -35,7 +35,7 @@ func GoogleAuthURL(c *gin.Context) {
 		url.QueryEscape(redirectURL),
 	)
 
-	c.JSON(http.StatusOK, gin.H{"url": authURL})
+	c.Redirect(http.StatusTemporaryRedirect, authURL)
 }
 
 // GoogleCallback handles the OAuth callback from Google
