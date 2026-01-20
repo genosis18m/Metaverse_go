@@ -1,0 +1,64 @@
+services:
+  # HTTP Server
+  - type: web
+    name: metaverse-http
+    runtime: docker
+    repo: https://github.com/genosis18m/Metaverse_go # Replace with your repo if different
+    rootDir: go-backend
+    plan: free
+    region: ohio # or frankfurt, oregon, singpore
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Set in dashboard
+      - key: JWT_SECRET
+        sync: false # Set in dashboard
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URL
+        fromService:
+          type: web
+          name: metaverse-http
+          property: url
+          envVarKey: GOOGLE_REDIRECT_URL_BASE
+    # Override command to run HTTP server
+    dockerCommand: ./http-server
+
+  # WebSocket Server
+  - type: web
+    name: metaverse-ws
+    runtime: docker
+    repo: https://github.com/genosis18m/Metaverse_go
+    rootDir: go-backend
+    plan: free
+    region: ohio # Must match HTTP server
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+    # Override command to run WebSocket server
+    dockerCommand: ./ws-server
+
+  # Frontend
+  - type: web
+    name: metaverse-frontend
+    runtime: node
+    repo: https://github.com/genosis18m/Metaverse_go
+    rootDir: go-backend/frontend
+    buildCommand: npm install && npm run build
+    startCommand: npx serve -s dist -l 3000
+    plan: free
+    region: ohio
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: metaverse-http
+          property: url
+      - key: VITE_WS_URL
+        fromService:
+          type: web
+          name: metaverse-ws
+          property: url
