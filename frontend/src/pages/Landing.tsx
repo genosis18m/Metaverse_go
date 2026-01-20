@@ -4,7 +4,7 @@ import '../index.css'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 interface LandingProps {
-  onLogin: (token: string, userId: string) => void
+  onLogin: (token: string, userId: string, username?: string) => void
 }
 
 export default function Landing({ onLogin }: LandingProps) {
@@ -32,7 +32,7 @@ export default function Landing({ onLogin }: LandingProps) {
         
         // Decode token to get userId
         const payload = JSON.parse(atob(data.token.split('.')[1]))
-        onLogin(data.token, payload.userId)
+        onLogin(data.token, payload.userId, username)
       } else {
         // Sign up
         const res = await fetch(`${API_URL}/api/v1/signup`, {
@@ -53,7 +53,7 @@ export default function Landing({ onLogin }: LandingProps) {
         if (!loginRes.ok) throw new Error(loginData.message || 'Auto-login failed')
         
         const payload = JSON.parse(atob(loginData.token.split('.')[1]))
-        onLogin(loginData.token, payload.userId)
+        onLogin(loginData.token, payload.userId, username)
       }
     } catch (err: any) {
       setError(err.message)
@@ -66,7 +66,7 @@ export default function Landing({ onLogin }: LandingProps) {
     <div className="landing-container">
       <div className="landing-content">
         <div className="landing-hero">
-          <h1>Metaverse</h1>
+          <h1 className="glitch-logo">METAVERSE</h1>
           <p>Create rooms, invite friends, chat and explore together!</p>
         </div>
 

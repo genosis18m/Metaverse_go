@@ -9,19 +9,24 @@ import './index.css'
 function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'))
   const [userId, setUserId] = useState<string | null>(localStorage.getItem('userId'))
+  const [username, setUsername] = useState<string | null>(localStorage.getItem('username'))
 
-  const handleLogin = (newToken: string, newUserId: string) => {
+  const handleLogin = (newToken: string, newUserId: string, newUsername?: string) => {
     localStorage.setItem('token', newToken)
     localStorage.setItem('userId', newUserId)
+    if (newUsername) localStorage.setItem('username', newUsername)
     setToken(newToken)
     setUserId(newUserId)
+    if (newUsername) setUsername(newUsername)
   }
 
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('userId')
+    localStorage.removeItem('username')
     setToken(null)
     setUserId(null)
+    setUsername(null)
   }
 
   return (
@@ -46,7 +51,7 @@ function App() {
         <Route 
           path="/arena/:spaceId" 
           element={
-            token ? <Arena token={token} userId={userId || ''} /> : <Navigate to="/" />
+            token ? <Arena token={token} userId={userId || ''} username={username || ''} /> : <Navigate to="/" />
           } 
         />
       </Routes>

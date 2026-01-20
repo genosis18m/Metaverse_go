@@ -206,7 +206,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       <div style={{position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
       <header className="dashboard-header" style={{background: 'rgba(26, 26, 46, 0.8)', backdropFilter: 'blur(5px)', width: '100%'}}>
         <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-          <h1 style={{fontFamily: "'Bangers', cursive", fontSize: '2.5rem', letterSpacing: '2px', background: 'linear-gradient(90deg, #FF6B6B, #4ECDC4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>Metaverse</h1>
+          <h1 className="glitch-logo" style={{fontSize: '1.8rem'}}>METAVERSE</h1>
           {currentUsername && <span style={{color: '#4ECDC4'}}>Welcome, {currentUsername}!</span>}
           <button 
             className="action-btn" 

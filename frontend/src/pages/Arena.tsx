@@ -19,9 +19,10 @@ interface ChatMessage {
 interface ArenaProps {
   token: string
   userId: string
+  username: string
 }
 
-export default function Arena({ token, userId }: ArenaProps) {
+export default function Arena({ token, userId, username }: ArenaProps) {
   const { spaceId } = useParams<{ spaceId: string }>()
   const navigate = useNavigate()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -250,7 +251,7 @@ export default function Arena({ token, userId }: ArenaProps) {
       ctx.fillStyle = '#fff'
       ctx.font = 'bold 10px Arial'
       ctx.textAlign = 'center'
-      ctx.fillText('YOU', x, y + 28)
+      ctx.fillText(username || 'YOU', x, y + 28)
     }
 
     // Draw other users
@@ -343,7 +344,7 @@ export default function Arena({ token, userId }: ArenaProps) {
               {messages.map((msg, i) => (
                 <div key={i} className={`chat-msg ${msg.userId === 'SYSTEM' ? 'system' : msg.userId === userId ? 'self' : ''}`}>
                   {msg.userId !== 'SYSTEM' && (
-                    <span className="chat-user">{msg.userId === userId ? 'You' : msg.userId.slice(0, 6)}:</span>
+                    <span className="chat-user">{msg.userId === userId ? (username || 'You') : msg.userId.slice(0, 8)}:</span>
                   )}
                   <span className="chat-text">{msg.message}</span>
                 </div>
