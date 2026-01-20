@@ -896,7 +896,7 @@ body {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   background: white; /* Changed from lightgrey */
-  gap: 20px;
+  gap: 15px; /* Reduced gap to fit content better */
   border-radius: 5px;
   border: 2px solid var(--main-color);
   box-shadow: 4px 4px var(--main-color);
