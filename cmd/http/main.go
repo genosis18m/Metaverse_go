@@ -22,6 +22,12 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
+	// Auto-migrate database tables
+	if err := database.AutoMigrate(); err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
+	}
+	log.Println("Database tables migrated successfully")
+
 	// Initialize Gin router
 	r := gin.Default()
 

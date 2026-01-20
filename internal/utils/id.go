@@ -8,7 +8,7 @@ import (
 // GenerateCUID generates a random CUID-like identifier
 // This matches the format used by Prisma's @default(cuid())
 func GenerateCUID() string {
-	b := make([]byte, 16)
+	b := make([]byte, 20) // 20 bytes = 27 base64 chars
 	rand.Read(b)
 	return base64.RawURLEncoding.EncodeToString(b)[:25]
 }
