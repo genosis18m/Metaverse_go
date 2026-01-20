@@ -37,8 +37,16 @@ type OutgoingMessage struct {
 
 // SpaceJoinedPayload represents the payload when user joins a space
 type SpaceJoinedPayload struct {
-	Spawn SpawnPoint   `json:"spawn"`
-	Users []UserInfo   `json:"users"`
+	Spawn    SpawnPoint    `json:"spawn"`
+	Users    []UserInfo    `json:"users"`
+	Messages []ChatMessage `json:"messages"`
+}
+
+// ChatMessage represents a chat history item
+type ChatMessage struct {
+	UserID    string `json:"userId"`
+	Message   string `json:"message"`
+	Timestamp string `json:"timestamp"`
 }
 
 // SpawnPoint represents a spawn position

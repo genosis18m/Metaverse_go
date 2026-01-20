@@ -43,6 +43,7 @@ func AutoMigrate() error {
 		&models.Element{},
 		&models.Map{},
 		&models.MapElement{},
+		&models.Message{},
 	)
 }
 

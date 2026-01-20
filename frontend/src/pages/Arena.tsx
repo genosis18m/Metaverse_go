@@ -75,6 +75,16 @@ export default function Arena({ token, userId }: ArenaProps) {
           if (u.userId) userMap.set(u.userId, u)
         })
         setUsers(userMap)
+        
+        // Set historical messages if available
+        if (msg.payload.messages) {
+           const history = msg.payload.messages.map((m: any) => ({
+             userId: m.userId,
+             message: m.message,
+             timestamp: new Date(m.timestamp)
+           }))
+           setMessages(history)
+        }
         break
 
       case 'user-joined':

@@ -77,7 +77,8 @@ func (rm *RoomManager) Broadcast(message OutgoingMessage, sender *User, spaceID 
 	}
 
 	for _, user := range users {
-		if user.ID != sender.ID {
+		// If sender is nil, broadcast to everyone. Otherwise skip sender.
+		if sender == nil || user.ID != sender.ID {
 			user.Send(message)
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/genosis18m/Metaverse_go/internal/database"
 	"github.com/genosis18m/Metaverse_go/internal/models"
@@ -120,12 +121,27 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 		}
 	}
 
+	// Fetch chat history (last 50 messages)
+	var messages []models.Message
+	database.GetDB().Where("space_id = ?", spaceID).Order("created_at desc").Limit(50).Find(&messages)
+
+	// Convert to ChatMessage struct (reverse order to show oldest first)
+	chatHistory := make([]ChatMessage, len(messages))
+	for i, msg := range messages {
+		chatHistory[len(messages)-1-i] = ChatMessage{
+			UserID:    msg.UserID,
+			Message:   msg.Text,
+			Timestamp: msg.CreatedAt.Format(time.RFC3339),
+		}
+	}
+
 	// Send space-joined message to the user
 	u.Send(OutgoingMessage{
 		Type: TypeSpaceJoined,
 		Payload: SpaceJoinedPayload{
-			Spawn: SpawnPoint{X: u.X, Y: u.Y},
-			Users: userInfos,
+			Spawn:    SpawnPoint{X: u.X, Y: u.Y},
+			Users:    userInfos,
+			Messages: chatHistory,
 		},
 	})
 
@@ -184,6 +200,16 @@ func (u *User) handleChat(payload IncomingMessagePayload) {
 		return
 	}
 
+	// Save message to database
+	msg := models.Message{
+		ID:        utils.GenerateCUID(),
+		Text:      payload.Message,
+		UserID:    u.UserID,
+		SpaceID:   u.SpaceID,
+		CreatedAt: time.Now(),
+	}
+	database.GetDB().Create(&msg)
+
 	// Broadcast chat message to all users in the room (including sender)
 	GetRoomManager().Broadcast(OutgoingMessage{
 		Type: TypeChat,
@@ -191,7 +217,7 @@ func (u *User) handleChat(payload IncomingMessagePayload) {
 			UserID:  u.UserID,
 			Message: payload.Message,
 		},
-	}, u, u.SpaceID)
+	}, nil, u.SpaceID) // Pass nil as sender to broadcast to EVERYONE including self
 }
 
 // Send sends a message to the user

@@ -559,12 +559,26 @@ body {
   color: #1a1a2e;
   font-weight: 600;
   cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.send-btn:hover {
+  opacity: 0.9;
 }
 
 .loading-text {
   color: #718096;
   text-align: center;
   padding: 2rem;
+}
+
+.success-message {
+  background: rgba(78, 205, 196, 0.2);
+  color: #4ECDC4;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  text-align: center;
 }
 
 @media (max-width: 768px) {

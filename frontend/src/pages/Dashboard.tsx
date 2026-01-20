@@ -27,6 +27,10 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false)
+  const [newUsername, setNewUsername] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+
   useEffect(() => {
     fetchSpaces()
   }, [])
@@ -42,6 +46,30 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       console.error('Failed to fetch spaces:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleUpdateUsername = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setSuccessMsg('')
+    
+    try {
+      const res = await fetch(`${API_URL}/api/v1/user/username`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ username: newUsername })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Failed to update username')
+      
+      setSuccessMsg('Username updated successfully!')
+      setTimeout(() => setShowEditProfileModal(false), 1500)
+    } catch (err: any) {
+      setError(err.message)
     }
   }
 
@@ -97,7 +125,21 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
-        <h1>🌐 2D Metaverse</h1>
+        <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+          <h1>🌐 2D Metaverse</h1>
+          <button 
+            className="action-btn" 
+            style={{padding: '0.5rem 1rem', fontSize: '0.9rem', background: 'rgba(255,255,255,0.1)'}}
+            onClick={() => {
+              setNewUsername('')
+              setSuccessMsg('')
+              setError('')
+              setShowEditProfileModal(true)
+            }}
+          >
+            ✏️ Edit Profile
+          </button>
+        </div>
         <button className="logout-btn" onClick={onLogout}>Logout</button>
       </header>
 
@@ -214,6 +256,38 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
                 </button>
                 <button type="submit" className="submit-btn">
                   Join Room
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Edit Username Modal */}
+      {showEditProfileModal && (
+        <div className="modal-overlay" onClick={() => setShowEditProfileModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h2>Edit Profile</h2>
+            <form onSubmit={handleUpdateUsername}>
+              <div className="form-group">
+                <label>New Username</label>
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="Enter new username"
+                  minLength={3}
+                  maxLength={50}
+                  required
+                />
+              </div>
+              {error && <div className="error-message">{error}</div>}
+              {successMsg && <div className="success-message" style={{color: '#4ECDC4', marginBottom: '1rem', textAlign: 'center'}}>{successMsg}</div>}
+              <div className="modal-actions">
+                <button type="button" className="cancel-btn" onClick={() => setShowEditProfileModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="submit-btn">
+                  Update
                 </button>
               </div>
             </form>
