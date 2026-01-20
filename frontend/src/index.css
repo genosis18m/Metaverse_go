@@ -892,7 +892,7 @@ body {
 }
 
 .flip-card__front, .flip-card__back {
-  padding: 2.5rem; /* More padding */
+  padding: 30px;
   position: absolute;
   top: 0;
   left: 0;
@@ -938,11 +938,11 @@ body {
   font-weight: 900;
   text-align: center;
   color: var(--main-color);
-  margin: 0; /* Removed margin, handled by parent gap */
+  margin: 0;
 }
 
 .flip-card__input {
-  width: 250px;
+  width: 100%; /* Changed from fixed 250px to 100% of parent */
   height: 40px;
   border-radius: 5px;
   border: 2px solid var(--main-color);
@@ -976,7 +976,6 @@ body {
   color: var(--font-color);
   cursor: pointer;
   transition: all 0.1s;
-  /* Removed margin */
 }
 
 .flip-card__btn:active {
@@ -985,20 +984,20 @@ body {
 }
 
 .google-btn {
-  width: 250px;
+  width: 100%; /* Changed from fixed 250px to 100% of parent */
   padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid #ccc; /* Or var(--main-color) for consistency */
+  border: 1px solid #ccc;
   border-radius: 5px;
   background: white;
   cursor: pointer;
   font-weight: 500;
   color: #555;
   transition: background 0.2s;
-  font-size: 15px; /* Match input font size roughly */
+  font-size: 15px;
   margin: 0;
 }
 
