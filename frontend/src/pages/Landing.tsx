@@ -66,7 +66,7 @@ export default function Landing({ onLogin }: LandingProps) {
     <div className="landing-container">
       <div className="landing-content">
         <div className="landing-hero">
-          <h1>🌐 2D Metaverse</h1>
+          <h1>Metaverse</h1>
           <p>Create rooms, invite friends, chat and explore together!</p>
         </div>
 
@@ -158,7 +158,6 @@ export default function Landing({ onLogin }: LandingProps) {
             </label>
           </div>
         </div>
-
         <div className="landing-features" style={{marginTop: '4rem'}}> 
           <div className="feature">
             <span className="feature-icon">🏠</span>

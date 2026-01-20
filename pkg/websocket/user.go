@@ -104,9 +104,17 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	// Add user to room
 	GetRoomManager().AddUser(spaceID, u)
 
-	// Set random spawn position (ensure it's within bounds and not at edge)
-	u.X = rand.Intn(max(1, space.Width-1)) + 1
-	u.Y = rand.Intn(max(1, space.Height-1)) + 1
+	// Set random spawn position (ensure it's within bounds: 1 to size-2)
+	if space.Width > 2 {
+		u.X = rand.Intn(space.Width-2) + 1
+	} else {
+		u.X = 0
+	}
+	if space.Height > 2 {
+		u.Y = rand.Intn(space.Height-2) + 1
+	} else {
+		u.Y = 0
+	}
 
 	// Get other users in the room
 	roomUsers := GetRoomManager().GetRoomUsers(spaceID)

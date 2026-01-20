@@ -32,10 +32,28 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [newUsername, setNewUsername] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentUsername, setCurrentUsername] = useState('')
+  const [bgType] = useState(() => Math.floor(Math.random() * 3) + 1)
+  const [joinError, setJoinError] = useState('')
 
   useEffect(() => {
     fetchSpaces()
+    fetchProfile()
   }, [])
+
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/user/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (res.ok && data.username) {
+        setCurrentUsername(data.username)
+      }
+    } catch (err) {
+      console.error('Failed to fetch profile:', err)
+    }
+  }
 
   const fetchSpaces = async () => {
     try {
@@ -69,6 +87,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       if (!res.ok) throw new Error(data.message || 'Failed to update username')
       
       setSuccessMsg('Username updated successfully!')
+      setCurrentUsername(newUsername) // Update displayed username
       setTimeout(() => setShowEditProfileModal(false), 1500)
     } catch (err: any) {
       setError(err.message)
@@ -89,8 +108,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         },
         body: JSON.stringify({
           name: newRoomName,
-          dimensions: roomSize,
-          mapId: 'default' // Add default mapId
+          dimensions: roomSize
+          // mapId removed - causes lookup failure
         })
       })
       
@@ -115,13 +134,28 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       navigate(`/arena/${data.spaceId}`)
     } catch (err: any) {
       setError(err.message)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  const handleJoinRoom = (e: React.FormEvent) => {
+  const handleJoinRoom = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (joinRoomId.trim()) {
+    setJoinError('')
+    if (!joinRoomId.trim()) return
+    
+    // Validate room exists
+    try {
+      const res = await fetch(`${API_URL}/api/v1/space/${joinRoomId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (!res.ok) {
+        setJoinError('Room not found. Please check the ID.')
+        return
+      }
       navigate(`/arena/${joinRoomId}`)
+    } catch (err) {
+      setJoinError('Failed to verify room. Please try again.')
     }
   }
 
@@ -139,16 +173,46 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     }
   }
 
+  const renderBackground = () => {
+    switch (bgType) {
+      case 1:
+        return (
+          <div className="jp-matrix">
+            {Array.from({ length: 150 }).map((_, i) => (
+              <span key={i}>{Math.random() > 0.5 ? '0' : '1'}</span>
+            ))}
+          </div>
+        )
+      case 2:
+        return <div className="bg-marsella"></div>
+      case 3:
+        return (
+          <div className="matrix-bg-container">
+             <div className="matrix-pattern">
+               {Array.from({ length: 40 }).map((_, i) => (
+                 <div key={i} className="matrix-column"></div>
+               ))}
+             </div>
+          </div>
+        )
+      default:
+        return <div className="bg-marsella"></div>
+    }
+  }
+
   return (
-    <div className="dashboard-container">
-      <header className="dashboard-header">
+    <div className="dashboard-container" style={{position: 'relative', overflow: 'hidden'}}>
+      {renderBackground()}
+      <div style={{position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <header className="dashboard-header" style={{background: 'rgba(26, 26, 46, 0.8)', backdropFilter: 'blur(5px)', width: '100%'}}>
         <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-          <h1>🌐 2D Metaverse</h1>
+          <h1 style={{fontFamily: "'Bangers', cursive", fontSize: '2.5rem', letterSpacing: '2px', background: 'linear-gradient(90deg, #FF6B6B, #4ECDC4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>Metaverse</h1>
+          {currentUsername && <span style={{color: '#4ECDC4'}}>Welcome, {currentUsername}!</span>}
           <button 
             className="action-btn" 
             style={{padding: '0.5rem 1rem', fontSize: '0.9rem', background: 'rgba(255,255,255,0.1)'}}
             onClick={() => {
-              setNewUsername('')
+              setNewUsername(currentUsername)
               setSuccessMsg('')
               setError('')
               setShowEditProfileModal(true)
@@ -285,6 +349,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
                       required
                     />
                   </div>
+                  {joinError && <div className="error-message" style={{color: '#FF6B6B', marginTop: '0.5rem'}}>{joinError}</div>}
                   <p className="help-text" style={{marginTop: '1rem'}}>Ask your friend for their Room ID to join!</p>
                   <div className="modal-actions">
                     <button type="button" className="cancel-btn" onClick={() => setShowJoinModal(false)}>
@@ -332,6 +397,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           </div>
         </div>
       )}
+    </div>
     </div>
   )
 }
