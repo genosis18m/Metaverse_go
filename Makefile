@@ -51,3 +51,21 @@ run-all:
 	$(GORUN) ./cmd/http/main.go &
 	@echo "Starting WebSocket server..."
 	$(GORUN) ./cmd/ws/main.go
+
+# Frontend commands
+frontend-install:
+	cd frontend && npm install
+
+frontend-dev:
+	cd frontend && npm run dev
+
+frontend-build:
+	cd frontend && npm run build
+
+# Run everything for development
+dev-all:
+	@echo "Make sure to run 'make frontend-install' first"
+	@echo "Starting all services..."
+	$(GORUN) ./cmd/http/main.go &
+	$(GORUN) ./cmd/ws/main.go &
+	cd frontend && npm run dev
