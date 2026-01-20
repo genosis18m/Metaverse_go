@@ -56,6 +56,11 @@ func main() {
 		v1.GET("/auth/google", handlers.GoogleAuthURL)
 		v1.GET("/auth/google/callback", handlers.GoogleCallback)
 
+		// Health check
+		v1.GET("/health", func(c *gin.Context) {
+			c.JSON(200, gin.H{"status": "ok"})
+		})
+
 		// User routes (requires authentication)
 		user := v1.Group("/user")
 		user.Use(middleware.UserAuth())
