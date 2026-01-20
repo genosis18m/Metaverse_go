@@ -273,58 +273,94 @@ export default function Arena({ token, userId }: ArenaProps) {
     })
   }, [currentUser, users])
 
-  return (
-    <div className="arena-container">
-      <header className="arena-header">
-        <button className="back-btn" onClick={() => navigate('/dashboard')}>
-          ← Back
-        </button>
-        <div className="room-info-header">
-          <span className={`status-dot ${connected ? 'connected' : ''}`}></span>
-          <span>Room: {spaceId?.slice(0, 10)}...</span>
-          <button className="copy-btn" onClick={copyRoomId}>
-            {copied ? '✓ Copied!' : '📋 Copy ID'}
-          </button>
-        </div>
-        <div className="user-count">
-          👥 {users.size + (currentUser ? 1 : 0)} online
-        </div>
-      </header>
+  const [bgType, setBgType] = useState(0)
+  useEffect(() => {
+    setBgType(Math.floor(Math.random() * 3) + 1)
+  }, [])
 
-      <div className="arena-body">
-        <div className="game-section">
-          <canvas
-            ref={canvasRef}
-            width={600}
-            height={480}
-            className="game-canvas"
-          />
-          <p className="controls-hint">Use WASD or Arrow Keys to move</p>
-        </div>
-
-        <div className="chat-section">
-          <h3>💬 Chat</h3>
-          <div className="chat-messages">
-            {messages.map((msg, i) => (
-              <div key={i} className={`chat-msg ${msg.userId === 'SYSTEM' ? 'system' : msg.userId === userId ? 'self' : ''}`}>
-                {msg.userId !== 'SYSTEM' && (
-                  <span className="chat-user">{msg.userId === userId ? 'You' : msg.userId.slice(0, 6)}:</span>
-                )}
-                <span className="chat-text">{msg.message}</span>
-              </div>
+  const renderBackground = () => {
+    switch (bgType) {
+      case 1: // JP Matrix
+        return (
+          <div className="jp-matrix">
+            {Array.from({ length: 150 }).map((_, i) => (
+              <span key={i}>{Math.random() > 0.5 ? '0' : '1'}</span>
             ))}
           </div>
-          <form onSubmit={sendChat} className="chat-input-form">
-            <input
-              ref={chatInputRef}
-              type="text"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Type a message..."
-              className="chat-input"
+        )
+      case 2: // Marsella
+        return <div className="bg-marsella"></div>
+      case 3: // Rain Matrix
+        return (
+          <div className="matrix-bg-container">
+             <div className="matrix-pattern">
+               {Array.from({ length: 40 }).map((_, i) => (
+                 <div key={i} className="matrix-column"></div>
+               ))}
+             </div>
+          </div>
+        )
+      default:
+        return <div className="bg-marsella"></div>
+    }
+  }
+
+  return (
+    <div className="arena-container" style={{position: 'relative', overflow: 'hidden'}}>
+      {renderBackground()}
+      
+      <div style={{position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column'}}>
+        <header className="arena-header" style={{background: 'rgba(26, 26, 46, 0.8)', backdropFilter: 'blur(5px)'}}>
+          <button className="back-btn" onClick={() => navigate('/dashboard')}>
+            ← Back
+          </button>
+          <div className="room-info-header">
+            <span className={`status-dot ${connected ? 'connected' : ''}`}></span>
+            <span>Room: {spaceId?.slice(0, 10)}...</span>
+            <button className="copy-btn" onClick={copyRoomId}>
+              {copied ? '✓ Copied!' : '📋 Copy ID'}
+            </button>
+          </div>
+          <div className="user-count">
+            👥 {users.size + (currentUser ? 1 : 0)} online
+          </div>
+        </header>
+
+        <div className="arena-body">
+          <div className="game-section">
+            <canvas
+              ref={canvasRef}
+              width={600}
+              height={480}
+              className="game-canvas"
             />
-            <button type="submit" className="send-btn">Send</button>
-          </form>
+            <p className="controls-hint">Use WASD or Arrow Keys to move</p>
+          </div>
+
+          <div className="chat-section">
+            <h3>💬 Chat</h3>
+            <div className="chat-messages">
+              {messages.map((msg, i) => (
+                <div key={i} className={`chat-msg ${msg.userId === 'SYSTEM' ? 'system' : msg.userId === userId ? 'self' : ''}`}>
+                  {msg.userId !== 'SYSTEM' && (
+                    <span className="chat-user">{msg.userId === userId ? 'You' : msg.userId.slice(0, 6)}:</span>
+                  )}
+                  <span className="chat-text">{msg.message}</span>
+                </div>
+              ))}
+            </div>
+            <form onSubmit={sendChat} className="chat-input-form">
+              <input
+                ref={chatInputRef}
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Type a message..."
+                className="chat-input"
+              />
+              <button type="submit" className="send-btn">Send</button>
+            </form>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../index.css'
+import Loader from '../components/Loader'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -30,6 +31,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [showEditProfileModal, setShowEditProfileModal] = useState(false)
   const [newUsername, setNewUsername] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     fetchSpaces()
@@ -76,6 +78,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setIsSubmitting(true)
     
     try {
       const res = await fetch(`${API_URL}/api/v1/space/`, {
@@ -86,11 +89,24 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         },
         body: JSON.stringify({
           name: newRoomName,
-          dimensions: roomSize
+          dimensions: roomSize,
+          mapId: 'default' // Add default mapId
         })
       })
+      
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.message || 'Failed to create room')
+      }
+      
       const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to create room')
+      
+      // Refresh spaces list
+      const spacesRes = await fetch(`${API_URL}/api/v1/space/all`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const spacesData = await spacesRes.json()
+      setSpaces(spacesData.spaces || [])
       
       setShowCreateModal(false)
       setNewRoomName('')
@@ -156,7 +172,9 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         <h2>Your Rooms</h2>
         
         {loading ? (
-          <p className="loading-text">Loading your rooms...</p>
+          <div className="loader-wrapper" style={{display: 'flex', justifyContent: 'center', padding: '3rem'}}>
+            <Loader />
+          </div>
         ) : spaces.length === 0 ? (
           <div className="empty-state">
             <p>You don't have any rooms yet.</p>
@@ -196,69 +214,88 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
 
       {/* Create Room Modal */}
       {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+        <div className="modal-overlay" onClick={() => !isSubmitting && setShowCreateModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2>Create New Room</h2>
-            <form onSubmit={handleCreateRoom}>
-              <div className="form-group">
-                <label>Room Name</label>
-                <input
-                  type="text"
-                  value={newRoomName}
-                  onChange={(e) => setNewRoomName(e.target.value)}
-                  placeholder="My Awesome Room"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Room Size</label>
-                <select value={roomSize} onChange={(e) => setRoomSize(e.target.value)}>
-                  <option value="10x10">Small (10x10)</option>
-                  <option value="20x20">Medium (20x20)</option>
-                  <option value="30x30">Large (30x30)</option>
-                  <option value="50x50">Huge (50x50)</option>
-                </select>
-              </div>
-              {error && <div className="error-message">{error}</div>}
-              <div className="modal-actions">
-                <button type="button" className="cancel-btn" onClick={() => setShowCreateModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="submit-btn">
-                  Create Room
-                </button>
-              </div>
-            </form>
+            {isSubmitting ? (
+               <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem'}}>
+                 <Loader />
+                 <p style={{marginTop: '1rem', color: '#666'}}>Creating your room...</p>
+               </div>
+            ) : (
+                <>
+                <h2>Create New Room</h2>
+                <form onSubmit={handleCreateRoom}>
+                  <div className="form-group">
+                    <label>Room Name</label>
+                    <input
+                      type="text"
+                      value={newRoomName}
+                      onChange={(e) => setNewRoomName(e.target.value)}
+                      placeholder="My Awesome Room"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Room Size</label>
+                    <select value={roomSize} onChange={(e) => setRoomSize(e.target.value)}>
+                      <option value="10x10">Small (10x10)</option>
+                      <option value="20x20">Medium (20x20)</option>
+                      <option value="30x30">Large (30x30)</option>
+                      <option value="50x50">Huge (50x50)</option>
+                    </select>
+                  </div>
+                  {error && <div className="error-message">{error}</div>}
+                  <div className="modal-actions">
+                    <button type="button" className="cancel-btn" onClick={() => setShowCreateModal(false)}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="submit-btn">
+                      Create Room
+                    </button>
+                  </div>
+                </form>
+                </>
+            )}
           </div>
         </div>
       )}
 
       {/* Join Room Modal */}
       {showJoinModal && (
-        <div className="modal-overlay" onClick={() => setShowJoinModal(false)}>
+        <div className="modal-overlay" onClick={() => !isSubmitting && setShowJoinModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2>Join a Room</h2>
-            <form onSubmit={handleJoinRoom}>
-              <div className="form-group">
-                <label>Room ID</label>
-                <input
-                  type="text"
-                  value={joinRoomId}
-                  onChange={(e) => setJoinRoomId(e.target.value)}
-                  placeholder="Paste the room ID here"
-                  required
-                />
-              </div>
-              <p className="help-text">Ask your friend for their Room ID to join!</p>
-              <div className="modal-actions">
-                <button type="button" className="cancel-btn" onClick={() => setShowJoinModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="submit-btn">
-                  Join Room
-                </button>
-              </div>
-            </form>
+            {isSubmitting ? (
+               <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem'}}>
+                 <Loader />
+                 <p style={{marginTop: '1rem', color: '#666'}}>Joining room...</p>
+               </div>
+            ) : (
+                <>
+                <h2 style={{marginBottom: '1.5rem'}}>Join a Room</h2>
+                <form onSubmit={handleJoinRoom}>
+                  <div className="uiverse-pixel-input-wrapper">
+                    <label className="uiverse-pixel-label">Room ID</label>
+                    <input
+                      className="uiverse-pixel-input"
+                      type="text"
+                      value={joinRoomId}
+                      onChange={(e) => setJoinRoomId(e.target.value)}
+                      placeholder="Paste the room ID here"
+                      required
+                    />
+                  </div>
+                  <p className="help-text" style={{marginTop: '1rem'}}>Ask your friend for their Room ID to join!</p>
+                  <div className="modal-actions">
+                    <button type="button" className="cancel-btn" onClick={() => setShowJoinModal(false)}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="submit-btn">
+                      Join Room
+                    </button>
+                  </div>
+                </form>
+                </>
+            )}
           </div>
         </div>
       )}
