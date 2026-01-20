@@ -3,10 +3,12 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/genosis18m/Metaverse_go/internal/database"
 	"github.com/genosis18m/Metaverse_go/internal/handlers"
 	"github.com/genosis18m/Metaverse_go/internal/middleware"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -30,6 +32,16 @@ func main() {
 
 	// Initialize Gin router
 	r := gin.Default()
+
+	// CORS middleware - allow frontend to access API
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// API v1 routes
 	v1 := r.Group("/api/v1")
