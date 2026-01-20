@@ -65,6 +65,8 @@ func (u *User) processMessage(msg IncomingMessage) {
 		u.handleJoin(msg.Payload)
 	case TypeMove:
 		u.handleMove(msg.Payload)
+	case TypeChat:
+		u.handleChat(msg.Payload)
 	}
 }
 
@@ -156,6 +158,22 @@ func (u *User) handleMove(payload IncomingMessagePayload) {
 		Type:    TypeMovementRejected,
 		Payload: MovementPayload{X: u.X, Y: u.Y},
 	})
+}
+
+// handleChat handles chat messages
+func (u *User) handleChat(payload IncomingMessagePayload) {
+	if u.SpaceID == "" {
+		return
+	}
+
+	// Broadcast chat message to all users in the room (including sender)
+	GetRoomManager().Broadcast(OutgoingMessage{
+		Type: TypeChat,
+		Payload: ChatPayload{
+			UserID:  u.UserID,
+			Message: payload.Message,
+		},
+	}, u, u.SpaceID)
 }
 
 // Send sends a message to the user

@@ -6,6 +6,7 @@ type MessageType string
 const (
 	TypeJoin             MessageType = "join"
 	TypeMove             MessageType = "move"
+	TypeChat             MessageType = "chat"
 	TypeSpaceJoined      MessageType = "space-joined"
 	TypeUserJoined       MessageType = "user-joined"
 	TypeMovement         MessageType = "movement"
@@ -25,6 +26,7 @@ type IncomingMessagePayload struct {
 	Token   string `json:"token,omitempty"`
 	X       int    `json:"x,omitempty"`
 	Y       int    `json:"y,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 // OutgoingMessage represents a message to client
@@ -66,4 +68,10 @@ type MovementPayload struct {
 // UserLeftPayload represents the payload when a user leaves
 type UserLeftPayload struct {
 	UserID string `json:"userId"`
+}
+
+// ChatPayload represents a chat message
+type ChatPayload struct {
+	UserID  string `json:"userId"`
+	Message string `json:"message"`
 }
