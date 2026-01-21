@@ -95,8 +95,11 @@ func main() {
 		}
 	}
 
-	// Get port from environment
-	port := os.Getenv("HTTP_PORT")
+	// Get port from environment (Railway uses PORT)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = os.Getenv("HTTP_PORT")
+	}
 	if port == "" {
 		port = "3000"
 	}
