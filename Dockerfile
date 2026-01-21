@@ -31,9 +31,6 @@ RUN apk --no-cache add ca-certificates
 COPY --from=builder /app/http-server .
 COPY --from=builder /app/ws-server .
 
-# Copy frontend build (if exists)
-COPY --from=builder /app/frontend/dist ./frontend/dist
-
 # Expose ports
 EXPOSE 3000 3001
 
