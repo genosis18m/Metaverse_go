@@ -42,12 +42,19 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Get port from environment
-	port := os.Getenv("WS_PORT")
+	// Get port from environment (Railway uses PORT)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = os.Getenv("WS_PORT")
+	}
 	if port == "" {
 		port = "3001"
 	}
 
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
 	http.HandleFunc("/", handleWebSocket)
 
 	log.Printf("WebSocket Server starting on port %s", port)
