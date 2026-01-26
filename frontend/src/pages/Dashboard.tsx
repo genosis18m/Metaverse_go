@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../index.css'
 import Loader from '../components/Loader'
+import RoomEntryModal from '../components/RoomEntryModal'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -35,6 +36,13 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [currentUsername, setCurrentUsername] = useState('')
   const [bgType] = useState(() => Math.floor(Math.random() * 3) + 1)
   const [joinError, setJoinError] = useState('')
+  
+  // Room entry modal state
+  const [showEntryModal, setShowEntryModal] = useState(false)
+  const [pendingRoomId, setPendingRoomId] = useState<string | null>(null)
+  
+  // Rooms drawer state
+  const [showRoomsDrawer, setShowRoomsDrawer] = useState(false)
 
   useEffect(() => {
     fetchSpaces()
@@ -130,11 +138,15 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       
       setShowCreateModal(false)
       setNewRoomName('')
-      // fetchSpaces() // Removed to speed up UI
-      navigate(`/arena/${data.spaceId}`)
+      setIsSubmitting(false)
+      
+      // Show entry modal after create modal closes
+      setTimeout(() => {
+        setPendingRoomId(data.spaceId)
+        setShowEntryModal(true)
+      }, 100)
     } catch (err: any) {
       setError(err.message)
-    } finally {
       setIsSubmitting(false)
     }
   }
@@ -153,7 +165,13 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         setJoinError('Room not found. Please check the ID.')
         return
       }
-      navigate(`/arena/${joinRoomId}`)
+      
+      // Show entry modal after join modal closes
+      setShowJoinModal(false)
+      setTimeout(() => {
+        setPendingRoomId(joinRoomId)
+        setShowEntryModal(true)
+      }, 100)
     } catch (err) {
       setJoinError('Failed to verify room. Please try again.')
     }
@@ -170,6 +188,19 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       fetchSpaces()
     } catch (err) {
       console.error('Failed to delete room:', err)
+    }
+  }
+
+  const handleEnterRoom = (spaceId: string) => {
+    setPendingRoomId(spaceId)
+    setShowEntryModal(true)
+  }
+
+  const handleEntryConfirm = (displayName: string) => {
+    if (pendingRoomId) {
+      navigate(`/arena/${pendingRoomId}`, { state: { displayName } })
+      setPendingRoomId(null)
+      setShowEntryModal(false)
     }
   }
 
@@ -210,71 +241,148 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           {currentUsername && <span style={{color: '#4ECDC4'}}>Welcome, {currentUsername}!</span>}
           <button 
             className="action-btn" 
-            style={{padding: '0.5rem 1rem', fontSize: '0.9rem', background: 'rgba(255,255,255,0.1)'}}
+            style={{padding: '0.5rem', fontSize: '1.2rem', background: 'transparent', border: 'none', cursor: 'pointer'}}
             onClick={() => {
               setNewUsername(currentUsername)
               setSuccessMsg('')
               setError('')
               setShowEditProfileModal(true)
             }}
+            title="Edit Profile"
           >
-            ✏️ Edit Profile
+            ✏️
           </button>
         </div>
         <button className="logout-btn" onClick={onLogout}>Logout</button>
       </header>
 
-      <main className="dashboard-main">
-        <div className="dashboard-actions">
-          <button className="action-btn create-btn" onClick={() => setShowCreateModal(true)}>
+      <main className="dashboard-main" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', padding: '2rem'}}>
+        <div className="dashboard-actions" style={{display: 'flex', gap: '1rem', justifyContent: 'center'}}>
+          <button 
+            onClick={() => setShowCreateModal(true)}
+            style={{
+              fontFamily: 'inherit',
+              border: 'none',
+              outline: '1px dotted rgb(37, 37, 37)',
+              outlineOffset: '-4px',
+              cursor: 'pointer',
+              background: 'hsl(120deg 40% 65%)',
+              boxShadow: 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(100, 180, 100), inset 2px 2px #ffffff',
+              fontSize: '16px',
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              padding: '12px 40px'
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.boxShadow = 'inset -1px -1px #fff, inset 1px 1px #292929, inset -2px -2px #ffffff, inset 2px 2px rgb(100, 180, 100)'
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.boxShadow = 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(100, 180, 100), inset 2px 2px #ffffff'
+            }}
+          >
             ➕ Create Room
           </button>
-          <button className="action-btn join-btn" onClick={() => setShowJoinModal(true)}>
+          <button 
+            onClick={() => setShowJoinModal(true)}
+            style={{
+              fontFamily: 'inherit',
+              border: 'none',
+              outline: '1px dotted rgb(37, 37, 37)',
+              outlineOffset: '-4px',
+              cursor: 'pointer',
+              background: 'hsl(200deg 50% 70%)',
+              boxShadow: 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(100, 150, 200), inset 2px 2px #ffffff',
+              fontSize: '14px',
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              padding: '8px 30px'
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.boxShadow = 'inset -1px -1px #fff, inset 1px 1px #292929, inset -2px -2px #ffffff, inset 2px 2px rgb(100, 150, 200)'
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.boxShadow = 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(100, 150, 200), inset 2px 2px #ffffff'
+            }}
+          >
             🚪 Join Room
           </button>
         </div>
 
-        <h2>Your Rooms</h2>
-        
-        {loading ? (
-          <div className="loader-wrapper" style={{display: 'flex', justifyContent: 'center', padding: '3rem'}}>
-            <Loader />
-          </div>
-        ) : spaces.length === 0 ? (
-          <div className="empty-state">
-            <p>You don't have any rooms yet.</p>
-            <p>Create one to get started!</p>
-          </div>
-        ) : (
-          <div className="rooms-grid">
-            {spaces.map(space => (
-              <div key={space.id} className="room-card">
-                <div className="room-preview">
-                  <span className="room-emoji">🏠</span>
+        <button 
+          onClick={() => setShowRoomsDrawer(!showRoomsDrawer)}
+          style={{
+            fontFamily: 'inherit',
+            border: 'none',
+            outline: '1px dotted rgb(37, 37, 37)',
+            outlineOffset: '-4px',
+            cursor: 'pointer',
+            background: 'hsl(280deg 40% 70%)',
+            boxShadow: 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(150, 100, 180), inset 2px 2px #ffffff',
+            fontSize: '16px',
+            textTransform: 'uppercase',
+            letterSpacing: '2px',
+            padding: '12px 50px'
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.boxShadow = 'inset -1px -1px #fff, inset 1px 1px #292929, inset -2px -2px #ffffff, inset 2px 2px rgb(150, 100, 180)'
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.boxShadow = 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(150, 100, 180), inset 2px 2px #ffffff'
+          }}
+        >
+          📁 Your Rooms {showRoomsDrawer ? '▲' : '▼'}
+        </button>
+
+        <div 
+          className="rooms-drawer" 
+          style={{
+            maxHeight: showRoomsDrawer ? '400px' : '0',
+            overflow: 'hidden',
+            transition: 'max-height 0.3s ease-in-out',
+            width: '100%',
+            maxWidth: '800px'
+          }}
+        >
+          {loading ? (
+            <div className="loader-wrapper" style={{display: 'flex', justifyContent: 'center', padding: '2rem'}}>
+              <Loader />
+            </div>
+          ) : spaces.length === 0 ? (
+            <div className="empty-state" style={{textAlign: 'center', padding: '2rem'}}>
+              <p>You don't have any rooms yet.</p>
+              <p>Create one to get started!</p>
+            </div>
+          ) : (
+            <div className="rooms-grid" style={{padding: '1rem 0'}}>
+              {spaces.slice(-3).reverse().map(space => (
+                <div key={space.id} className="room-card">
+                  <div className="room-preview">
+                    <span className="room-emoji">🏠</span>
+                  </div>
+                  <div className="room-info">
+                    <h3>{space.name}</h3>
+                    <p className="room-size">{space.dimensions}</p>
+                    <p className="room-id">ID: {space.id.slice(0, 8)}...</p>
+                  </div>
+                  <div className="room-actions">
+                    <button 
+                      className="enter-btn"
+                      onClick={() => handleEnterRoom(space.id)}
+                    >
+                      Enter
+                    </button>
+                    <button 
+                      className="delete-btn"
+                      onClick={() => handleDeleteRoom(space.id)}
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
-                <div className="room-info">
-                  <h3>{space.name}</h3>
-                  <p className="room-size">{space.dimensions}</p>
-                  <p className="room-id">ID: {space.id.slice(0, 8)}...</p>
-                </div>
-                <div className="room-actions">
-                  <button 
-                    className="enter-btn"
-                    onClick={() => navigate(`/arena/${space.id}`)}
-                  >
-                    Enter
-                  </button>
-                  <button 
-                    className="delete-btn"
-                    onClick={() => handleDeleteRoom(space.id)}
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </main>
 
       {/* Create Room Modal */}
@@ -397,6 +505,17 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           </div>
         </div>
       )}
+
+      {/* Room Entry Modal */}
+      <RoomEntryModal
+        isOpen={showEntryModal}
+        onClose={() => {
+          setShowEntryModal(false)
+          setPendingRoomId(null)
+        }}
+        onEnter={handleEntryConfirm}
+        accountUsername={currentUsername}
+      />
     </div>
     </div>
   )

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import '../index.css'
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001'
@@ -8,10 +8,12 @@ interface User {
   x: number
   y: number
   userId: string
+  username: string
 }
 
 interface ChatMessage {
   userId: string
+  username: string
   message: string
   timestamp: Date
 }
@@ -25,9 +27,13 @@ interface ArenaProps {
 export default function Arena({ token, userId, username }: ArenaProps) {
   const { spaceId } = useParams<{ spaceId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const chatInputRef = useRef<HTMLInputElement>(null)
+  
+  // Get displayName from route state, fallback to username
+  const displayName = (location.state as any)?.displayName || username
   
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [users, setUsers] = useState<Map<string, User>>(new Map())
@@ -45,7 +51,7 @@ export default function Arena({ token, userId, username }: ArenaProps) {
       setConnected(true)
       wsRef.current?.send(JSON.stringify({
         type: 'join',
-        payload: { spaceId, token }
+        payload: { spaceId, token, displayName }
       }))
     }
 
@@ -69,11 +75,17 @@ export default function Arena({ token, userId, username }: ArenaProps) {
         setCurrentUser({
           x: msg.payload.spawn.x,
           y: msg.payload.spawn.y,
-          userId
+          userId,
+          username: displayName || username || userId.slice(0, 8)
         })
         const userMap = new Map<string, User>()
         msg.payload.users?.forEach((u: any) => {
-          if (u.userId) userMap.set(u.userId, u)
+          if (u.userId) userMap.set(u.userId, {
+            x: u.x,
+            y: u.y,
+            userId: u.userId,
+            username: u.username || u.userId.slice(0, 8)
+          })
         })
         setUsers(userMap)
         
@@ -81,6 +93,7 @@ export default function Arena({ token, userId, username }: ArenaProps) {
         if (msg.payload.messages) {
            const history = msg.payload.messages.map((m: any) => ({
              userId: m.userId,
+             username: m.username || m.userId.slice(0, 8),
              message: m.message,
              timestamp: new Date(m.timestamp)
            }))
@@ -94,11 +107,12 @@ export default function Arena({ token, userId, username }: ArenaProps) {
           newUsers.set(msg.payload.userId, {
             x: msg.payload.x,
             y: msg.payload.y,
-            userId: msg.payload.userId
+            userId: msg.payload.userId,
+            username: msg.payload.username || msg.payload.userId.slice(0, 8)
           })
           return newUsers
         })
-        addSystemMessage(`${msg.payload.userId.slice(0, 8)} joined`)
+        addSystemMessage(`${msg.payload.username || msg.payload.userId.slice(0, 8)} joined`)
         break
 
       case 'movement':
@@ -117,17 +131,20 @@ export default function Arena({ token, userId, username }: ArenaProps) {
         break
 
       case 'user-left':
+        const leftUser = users.get(msg.payload.userId)
+        const leftUsername = leftUser?.username || msg.payload.userId.slice(0, 8)
         setUsers(prev => {
           const newUsers = new Map(prev)
           newUsers.delete(msg.payload.userId)
           return newUsers
         })
-        addSystemMessage(`${msg.payload.userId.slice(0, 8)} left`)
+        addSystemMessage(`${leftUsername} left`)
         break
 
       case 'chat':
         setMessages(prev => [...prev, {
           userId: msg.payload.userId,
+          username: msg.payload.username || msg.payload.userId.slice(0, 8),
           message: msg.payload.message,
           timestamp: new Date()
         }])
@@ -138,6 +155,7 @@ export default function Arena({ token, userId, username }: ArenaProps) {
   const addSystemMessage = (text: string) => {
     setMessages(prev => [...prev, {
       userId: 'SYSTEM',
+      username: 'SYSTEM',
       message: text,
       timestamp: new Date()
     }])
@@ -157,9 +175,7 @@ export default function Arena({ token, userId, username }: ArenaProps) {
   }
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    const isChatFocused = document.activeElement === chatInputRef.current
-    
-    // Arrow keys always work for movement (even while typing)
+    // Only arrow keys work for movement
     if (e.key.startsWith('Arrow')) {
       e.preventDefault()
       switch (e.key) {
@@ -167,17 +183,6 @@ export default function Arena({ token, userId, username }: ArenaProps) {
         case 'ArrowDown': handleMove(0, 1); break
         case 'ArrowLeft': handleMove(-1, 0); break
         case 'ArrowRight': handleMove(1, 0); break
-      }
-      return
-    }
-    
-    // WASD only works when chat is not focused
-    if (!isChatFocused) {
-      switch (e.key) {
-        case 'w': case 'W': handleMove(0, -1); break
-        case 's': case 'S': handleMove(0, 1); break
-        case 'a': case 'A': handleMove(-1, 0); break
-        case 'd': case 'D': handleMove(1, 0); break
       }
     }
   }
@@ -196,11 +201,7 @@ export default function Arena({ token, userId, username }: ArenaProps) {
       payload: { message: chatInput }
     }))
     
-    setMessages(prev => [...prev, {
-      userId,
-      message: chatInput,
-      timestamp: new Date()
-    }])
+    // Don't add message optimistically - backend will broadcast it back with correct username
     setChatInput('')
   }
 
@@ -251,7 +252,7 @@ export default function Arena({ token, userId, username }: ArenaProps) {
       ctx.fillStyle = '#fff'
       ctx.font = 'bold 10px Arial'
       ctx.textAlign = 'center'
-      ctx.fillText(username || 'YOU', x, y + 28)
+      ctx.fillText(displayName || username || 'YOU', x, y + 28)
     }
 
     // Draw other users
@@ -270,7 +271,7 @@ export default function Arena({ token, userId, username }: ArenaProps) {
       ctx.fillStyle = '#fff'
       ctx.font = '9px Arial'
       ctx.textAlign = 'center'
-      ctx.fillText(user.userId.slice(0, 6), x, y + 28)
+      ctx.fillText(user.username || user.userId.slice(0, 6), x, y + 28)
     })
   }, [currentUser, users])
 
@@ -335,16 +336,16 @@ export default function Arena({ token, userId, username }: ArenaProps) {
               height={480}
               className="game-canvas"
             />
-            <p className="controls-hint">Use WASD or Arrow Keys to move</p>
+            <p className="controls-hint">Use Arrow Keys to move</p>
           </div>
 
-          <div className="chat-section">
+          <div className="chat-section" style={{width: '35%', minWidth: '280px', maxWidth: '400px'}}>
             <h3>💬 Chat</h3>
             <div className="chat-messages">
               {messages.map((msg, i) => (
                 <div key={i} className={`chat-msg ${msg.userId === 'SYSTEM' ? 'system' : msg.userId === userId ? 'self' : ''}`}>
                   {msg.userId !== 'SYSTEM' && (
-                    <span className="chat-user">{msg.userId === userId ? (username || 'You') : msg.userId.slice(0, 8)}:</span>
+                    <span className="chat-user">{msg.userId === userId ? (displayName || username || 'You') : msg.username}:</span>
                   )}
                   <span className="chat-text">{msg.message}</span>
                 </div>
@@ -358,8 +359,9 @@ export default function Arena({ token, userId, username }: ArenaProps) {
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder="Type a message..."
                 className="chat-input"
+                style={{flex: 1}}
               />
-              <button type="submit" className="send-btn">Send</button>
+              <button type="submit" className="send-btn" style={{minWidth: '45px', padding: '0.5rem'}}>➤</button>
             </form>
           </div>
         </div>

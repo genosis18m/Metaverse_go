@@ -3,7 +3,6 @@ package websocket
 import (
 	"encoding/json"
 	"log"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 type User struct {
 	ID          string
 	UserID      string
+	Username    string
 	SpaceID     string
 	SpaceWidth  int
 	SpaceHeight int
@@ -88,6 +88,21 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 
 	u.UserID = claims.UserID
 
+	// Look up the username from the database
+	var dbUser models.User
+	if err := database.GetDB().First(&dbUser, "id = ?", u.UserID).Error; err != nil {
+		log.Printf("User not found: %v", err)
+		u.conn.Close()
+		return
+	}
+	
+	// Use displayName from payload if provided, otherwise use DB username
+	if payload.DisplayName != "" {
+		u.Username = payload.DisplayName
+	} else {
+		u.Username = dbUser.Username
+	}
+
 	// Find space
 	var space models.Space
 	result := database.GetDB().First(&space, "id = ?", spaceID)
@@ -104,17 +119,9 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	// Add user to room
 	GetRoomManager().AddUser(spaceID, u)
 
-	// Set random spawn position (ensure it's within bounds: 1 to size-2)
-	if space.Width > 2 {
-		u.X = rand.Intn(space.Width-2) + 1
-	} else {
-		u.X = 0
-	}
-	if space.Height > 2 {
-		u.Y = rand.Intn(space.Height-2) + 1
-	} else {
-		u.Y = 0
-	}
+	// Spawn at center of the space
+	u.X = space.Width / 2
+	u.Y = space.Height / 2
 
 	// Get other users in the room
 	roomUsers := GetRoomManager().GetRoomUsers(spaceID)
@@ -122,9 +129,10 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	for _, user := range roomUsers {
 		if user.ID != u.ID {
 			userInfos = append(userInfos, UserInfo{
-				UserID: user.UserID,
-				X:      user.X,
-				Y:      user.Y,
+				UserID:   user.UserID,
+				Username: user.Username,
+				X:        user.X,
+				Y:        user.Y,
 			})
 		}
 	}
@@ -136,8 +144,15 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	// Convert to ChatMessage struct (reverse order to show oldest first)
 	chatHistory := make([]ChatMessage, len(messages))
 	for i, msg := range messages {
+		// Look up username for each message
+		var msgUser models.User
+		username := msg.UserID // fallback to ID
+		if err := database.GetDB().First(&msgUser, "id = ?", msg.UserID).Error; err == nil {
+			username = msgUser.Username
+		}
 		chatHistory[len(messages)-1-i] = ChatMessage{
 			UserID:    msg.UserID,
+			Username:  username,
 			Message:   msg.Text,
 			Timestamp: msg.CreatedAt.Format(time.RFC3339),
 		}
@@ -157,9 +172,10 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	GetRoomManager().Broadcast(OutgoingMessage{
 		Type: TypeUserJoined,
 		Payload: UserJoinedPayload{
-			UserID: u.UserID,
-			X:      u.X,
-			Y:      u.Y,
+			UserID:   u.UserID,
+			Username: u.Username,
+			X:        u.X,
+			Y:        u.Y,
 		},
 	}, u, spaceID)
 }
@@ -222,8 +238,9 @@ func (u *User) handleChat(payload IncomingMessagePayload) {
 	GetRoomManager().Broadcast(OutgoingMessage{
 		Type: TypeChat,
 		Payload: ChatPayload{
-			UserID:  u.UserID,
-			Message: payload.Message,
+			UserID:   u.UserID,
+			Username: u.Username,
+			Message:  payload.Message,
 		},
 	}, nil, u.SpaceID) // Pass nil as sender to broadcast to EVERYONE including self
 }

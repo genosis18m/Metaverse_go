@@ -22,11 +22,12 @@ type IncomingMessage struct {
 
 // IncomingMessagePayload represents the payload of incoming message
 type IncomingMessagePayload struct {
-	SpaceID string `json:"spaceId,omitempty"`
-	Token   string `json:"token,omitempty"`
-	X       int    `json:"x,omitempty"`
-	Y       int    `json:"y,omitempty"`
-	Message string `json:"message,omitempty"`
+	SpaceID     string `json:"spaceId,omitempty"`
+	Token       string `json:"token,omitempty"`
+	DisplayName string `json:"displayName,omitempty"`
+	X           int    `json:"x,omitempty"`
+	Y           int    `json:"y,omitempty"`
+	Message     string `json:"message,omitempty"`
 }
 
 // OutgoingMessage represents a message to client
@@ -45,6 +46,7 @@ type SpaceJoinedPayload struct {
 // ChatMessage represents a chat history item
 type ChatMessage struct {
 	UserID    string `json:"userId"`
+	Username  string `json:"username"`
 	Message   string `json:"message"`
 	Timestamp string `json:"timestamp"`
 }
@@ -57,16 +59,18 @@ type SpawnPoint struct {
 
 // UserInfo represents basic user info with position
 type UserInfo struct {
-	UserID string `json:"userId"`
-	X      int    `json:"x"`
-	Y      int    `json:"y"`
+	UserID   string `json:"userId"`
+	Username string `json:"username"`
+	X        int    `json:"x"`
+	Y        int    `json:"y"`
 }
 
 // UserJoinedPayload represents the payload when a new user joins
 type UserJoinedPayload struct {
-	UserID string `json:"userId"`
-	X      int    `json:"x"`
-	Y      int    `json:"y"`
+	UserID   string `json:"userId"`
+	Username string `json:"username"`
+	X        int    `json:"x"`
+	Y        int    `json:"y"`
 }
 
 // MovementPayload represents the payload for movement events
@@ -83,6 +87,7 @@ type UserLeftPayload struct {
 
 // ChatPayload represents a chat message
 type ChatPayload struct {
-	UserID  string `json:"userId"`
-	Message string `json:"message"`
+	UserID   string `json:"userId"`
+	Username string `json:"username"`
+	Message  string `json:"message"`
 }
