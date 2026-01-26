@@ -292,10 +292,10 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
               cursor: 'pointer',
               background: 'hsl(200deg 50% 70%)',
               boxShadow: 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(100, 150, 200), inset 2px 2px #ffffff',
-              fontSize: '14px',
+              fontSize: '16px',
               textTransform: 'uppercase',
               letterSpacing: '2px',
-              padding: '8px 30px'
+              padding: '12px 40px'
             }}
             onMouseDown={(e) => {
               e.currentTarget.style.boxShadow = 'inset -1px -1px #fff, inset 1px 1px #292929, inset -2px -2px #ffffff, inset 2px 2px rgb(100, 150, 200)'
