@@ -40,29 +40,39 @@ func GoogleAuthURL(c *gin.Context) {
 
 // GoogleCallback handles the OAuth callback from Google
 func GoogleCallback(c *gin.Context) {
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:5173" // fallback for local development
+	}
+
 	code := c.Query("code")
 	if code == "" {
-		c.Redirect(http.StatusTemporaryRedirect, "http://localhost:5173?error=no_code")
+		c.Redirect(http.StatusTemporaryRedirect, frontendURL+"?error=no_code")
 		return
 	}
 
 	// Exchange code for token
 	token, err := exchangeCodeForToken(code)
 	if err != nil {
-		c.Redirect(http.StatusTemporaryRedirect, "http://localhost:5173?error=token_exchange_failed")
+		c.Redirect(http.StatusTemporaryRedirect, frontendURL+"?error=token_exchange_failed")
 		return
 	}
 
 	// Get user info from Google
 	userInfo, err := getGoogleUserInfo(token)
 	if err != nil {
-		c.Redirect(http.StatusTemporaryRedirect, "http://localhost:5173?error=user_info_failed")
+		c.Redirect(http.StatusTemporaryRedirect, frontendURL+"?error=user_info_failed")
 		return
 	}
 
 	// Find or create user
 	var user models.User
 	result := database.GetDB().Where("username = ?", userInfo.Email).First(&user)
+
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:5173" // fallback for local development
+	}
 
 	if result.Error != nil {
 		// Create new user with Google account
@@ -73,7 +83,7 @@ func GoogleCallback(c *gin.Context) {
 			Role:     "User",
 		}
 		if err := database.GetDB().Create(&user).Error; err != nil {
-			c.Redirect(http.StatusTemporaryRedirect, "http://localhost:5173?error=user_creation_failed")
+			c.Redirect(http.StatusTemporaryRedirect, frontendURL+"?error=user_creation_failed")
 			return
 		}
 	}
@@ -81,12 +91,12 @@ func GoogleCallback(c *gin.Context) {
 	// Generate JWT token
 	jwtToken, err := utils.GenerateToken(user.ID, string(user.Role))
 	if err != nil {
-		c.Redirect(http.StatusTemporaryRedirect, "http://localhost:5173?error=jwt_generation_failed")
+		c.Redirect(http.StatusTemporaryRedirect, frontendURL+"?error=jwt_generation_failed")
 		return
 	}
 
 	// Redirect to frontend with token
-	redirectURL := fmt.Sprintf("http://localhost:5173/oauth-callback?token=%s&userId=%s", jwtToken, user.ID)
+	redirectURL := fmt.Sprintf("%s/oauth-callback?token=%s&userId=%s", frontendURL, jwtToken, user.ID)
 	c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 }
 
