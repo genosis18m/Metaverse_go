@@ -69,11 +69,6 @@ func GoogleCallback(c *gin.Context) {
 	var user models.User
 	result := database.GetDB().Where("username = ?", userInfo.Email).First(&user)
 
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		frontendURL = "http://localhost:5173" // fallback for local development
-	}
-
 	if result.Error != nil {
 		// Create new user with Google account
 		user = models.User{
