@@ -144,10 +144,15 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	// Convert to ChatMessage struct (reverse order to show oldest first)
 	chatHistory := make([]ChatMessage, len(messages))
 	for i, msg := range messages {
-		// Use the stored username (display name used when message was sent)
+		// Look up username for each message
+		var msgUser models.User
+		username := msg.UserID // fallback to ID
+		if err := database.GetDB().First(&msgUser, "id = ?", msg.UserID).Error; err == nil {
+			username = msgUser.Username
+		}
 		chatHistory[len(messages)-1-i] = ChatMessage{
 			UserID:    msg.UserID,
-			Username:  msg.Username, // Use stored display name
+			Username:  username,
 			Message:   msg.Text,
 			Timestamp: msg.CreatedAt.Format(time.RFC3339),
 		}
@@ -219,12 +224,11 @@ func (u *User) handleChat(payload IncomingMessagePayload) {
 		return
 	}
 
-	// Save message to database with display name
+	// Save message to database
 	msg := models.Message{
 		ID:        utils.GenerateCUID(),
 		Text:      payload.Message,
 		UserID:    u.UserID,
-		Username:  u.Username, // Store the display name used when sending
 		SpaceID:   u.SpaceID,
 		CreatedAt: time.Now(),
 	}
