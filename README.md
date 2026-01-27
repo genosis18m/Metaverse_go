@@ -1,5 +1,8 @@
 # 2D Metaverse - Golang Backend
 
+
+deployed link: https://metaverse-frontend-production-3803.up.railway.app
+
 A real-time 2D metaverse application backend built with Go.
 
 ## Features
