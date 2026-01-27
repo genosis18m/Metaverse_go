@@ -3,6 +3,9 @@
 
 deployed link: https://metaverse-frontend-production-3803.up.railway.app
 
+<img width="2850" height="1654" alt="Screenshot from 2026-01-27 13-58-05" src="https://github.com/user-attachments/assets/eaf9929d-afad-4c16-972c-52d2c77db006" />
+
+
 A real-time 2D metaverse application backend built with Go.
 
 ## Features
