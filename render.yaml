@@ -4,7 +4,7 @@ services:
     name: metaverse-http
     runtime: docker
     repo: https://github.com/genosis18m/Metaverse_go # Replace with your repo if different
-    rootDir: go-backend
+    rootDir: .
     plan: free
     region: ohio # or frankfurt, oregon, singpore
     envVars:
@@ -26,7 +26,7 @@ services:
     name: metaverse-ws
     runtime: docker
     repo: https://github.com/genosis18m/Metaverse_go
-    rootDir: go-backend
+    rootDir: .
     plan: free
     region: ohio # Must match HTTP server
     envVars:
