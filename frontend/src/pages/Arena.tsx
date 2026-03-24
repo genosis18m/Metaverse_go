@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import '../index.css'
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001'
+let WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001'
+if (WS_URL.startsWith('http://')) {
+  WS_URL = WS_URL.replace('http://', 'ws://')
+} else if (WS_URL.startsWith('https://')) {
+  WS_URL = WS_URL.replace('https://', 'wss://')
+}
 
 interface User {
   x: number
