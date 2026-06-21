@@ -697,6 +697,7 @@ button {
 
 /* Section heading */
 .section-title {
+  width: 100%;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1.15rem;
@@ -711,6 +712,22 @@ button {
   flex: 1;
   height: 1px;
   background: var(--line);
+}
+
+/* "Your space" block — actions + your rooms */
+.dash-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+/* Cozy footer */
+.cozy-footer {
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  padding: 1rem 0 0.5rem;
 }
 
 /* Public hangout zones */
@@ -1378,6 +1395,98 @@ button {
   filter: brightness(1.05);
 }
 
+/* Cooler chat — animated bubbles, dots, empty state */
+.chat-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.chat-msg {
+  animation: msg-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  box-shadow: 0 4px 12px -8px rgba(0, 0, 0, 0.6);
+  border: 1px solid transparent;
+}
+.chat-msg:not(.self):not(.system) {
+  border-color: var(--line);
+  border-bottom-left-radius: 4px;
+}
+.chat-msg.self {
+  border-bottom-right-radius: 4px;
+}
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.chat-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.chat-user::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 6px var(--mint);
+}
+.chat-msg.self .chat-user::before {
+  background: var(--peach);
+  box-shadow: 0 0 6px var(--peach);
+}
+.chat-empty {
+  margin: auto;
+  text-align: center;
+  color: var(--text-faint);
+  padding: 1.5rem 1rem;
+}
+.chat-empty-emoji {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+  animation: bob 3s ease-in-out infinite;
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.chat-messages::-webkit-scrollbar {
+  width: 8px;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 8px;
+}
+
+/* "Hi" toasts — cozy popups when two players bump into each other */
+.toast-stack {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  pointer-events: none;
+}
+.toast {
+  padding: 0.7rem 1.2rem;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #2a1330;
+  background: linear-gradient(135deg, var(--glow), var(--peach));
+  box-shadow: 0 14px 32px -12px rgba(255, 138, 92, 0.8);
+  animation: toast-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  white-space: nowrap;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-14px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* ============================================================
    LOADER — cozy three-dot bounce
    ============================================================ */
@@ -1420,7 +1529,7 @@ button {
 
 /* Short viewports: keep the landing's hero + login card above the fold */
 @media (max-height: 880px) {
-  .ambient-street {
+  .landing-container .ambient-street {
     display: none;
   }
   .landing-hero p {
@@ -1454,9 +1563,6 @@ button {
     width: 100% !important;
     max-width: none !important;
     height: 340px;
-  }
-  .ambient-street {
-    display: none;
   }
   .dashboard-main {
     padding: 1.25rem 1rem 3rem;

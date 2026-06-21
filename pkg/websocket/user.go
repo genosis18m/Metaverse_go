@@ -25,15 +25,20 @@ type User struct {
 	Y           int
 	conn        *websocket.Conn
 	mu          sync.Mutex
+	// nearby tracks which users are currently adjacent, so a "hi" only fires
+	// when two players newly come close (not every tick they stay close).
+	// Only touched by this user's own read goroutine — no lock needed.
+	nearby map[string]bool
 }
 
 // NewUser creates a new user from a WebSocket connection
 func NewUser(conn *websocket.Conn) *User {
 	user := &User{
-		ID:   utils.GenerateRandomString(10),
-		X:    0,
-		Y:    0,
-		conn: conn,
+		ID:     utils.GenerateRandomString(10),
+		X:      0,
+		Y:      0,
+		conn:   conn,
+		nearby: make(map[string]bool),
 	}
 	return user
 }
@@ -231,6 +236,9 @@ func (u *User) handleMove(payload IncomingMessagePayload) {
 			Type:    TypeMovement,
 			Payload: MovementPayload{UserID: u.UserID, X: u.X, Y: u.Y},
 		}, u, u.SpaceID)
+
+		// Say hi to anyone we just bumped into
+		u.greetNearby()
 		return
 	}
 
@@ -239,6 +247,35 @@ func (u *User) handleMove(payload IncomingMessagePayload) {
 		Type:    TypeMovementRejected,
 		Payload: MovementPayload{UserID: u.UserID, X: u.X, Y: u.Y},
 	})
+}
+
+// greetNearby fires a "hi" to both players whenever this user newly comes
+// adjacent (within one tile) to another. Staying close doesn't re-fire.
+func (u *User) greetNearby() {
+	roomUsers := GetRoomManager().GetRoomUsers(u.SpaceID)
+	newNearby := make(map[string]bool)
+
+	for _, other := range roomUsers {
+		if other.ID == u.ID {
+			continue
+		}
+		if abs(other.X-u.X) <= 1 && abs(other.Y-u.Y) <= 1 {
+			newNearby[other.ID] = true
+			if !u.nearby[other.ID] {
+				// Newly adjacent — greet both sides, each naming the other.
+				u.Send(OutgoingMessage{
+					Type:    TypeHi,
+					Payload: HiPayload{UserID: other.UserID, Username: other.Username},
+				})
+				other.Send(OutgoingMessage{
+					Type:    TypeHi,
+					Payload: HiPayload{UserID: u.UserID, Username: u.Username},
+				})
+			}
+		}
+	}
+
+	u.nearby = newNearby
 }
 
 // handleChat handles chat messages

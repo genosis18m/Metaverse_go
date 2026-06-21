@@ -293,36 +293,17 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         <section className="dash-hero">
           <h2>Anonymous hangout zones</h2>
           <p>Drop into a public zone where nobody needs your real name — or spin up a room of your own.</p>
-        </section>
-
-        <section className="zones-section">
-          <div className="section-title">Public zones</div>
-          <div className="zone-grid">
-            {featured.map(z => {
-              const n = counts[z.id] || 0
-              return (
-                <div key={z.id} className="zone-card" data-accent={z.accent}>
-                  <div className="zone-emoji">{z.emoji}</div>
-                  <div className="zone-body">
-                    <h3>{z.name}</h3>
-                    <p>{z.description}</p>
-                    <div className="zone-meta">
-                      <span className="online-badge" data-empty={n === 0}>
-                        <i className="online-dot"></i>
-                        {n > 0 ? `${n} online` : 'Be the first'}
-                      </span>
-                      <span className="zone-size">{z.dimensions}</span>
-                    </div>
-                  </div>
-                  <button className="zone-enter" onClick={() => handleEnterRoom(z.id)}>
-                    Enter →
-                  </button>
-                </div>
-              )
-            })}
+          <div className="ambient-street" aria-hidden="true">
+            <span className="stroller"></span>
+            <span className="stroller"></span>
+            <span className="stroller"></span>
+            <span className="stroller"></span>
+            <span className="stroller"></span>
           </div>
         </section>
 
+        <section className="dash-block">
+        <div className="section-title">Your space</div>
         <div className="dashboard-actions" style={{display: 'flex', gap: '1rem', justifyContent: 'center'}}>
           <button className="arcade-btn arcade-btn--create" onClick={() => setShowCreateModal(true)}>
             ➕ Create room
@@ -386,6 +367,37 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
             </div>
           )}
         </div>
+        </section>
+
+        <section className="zones-section">
+          <div className="section-title">Popular hangouts</div>
+          <div className="zone-grid">
+            {featured.map(z => {
+              const n = counts[z.id] || 0
+              return (
+                <div key={z.id} className="zone-card" data-accent={z.accent}>
+                  <div className="zone-emoji">{z.emoji}</div>
+                  <div className="zone-body">
+                    <h3>{z.name}</h3>
+                    <p>{z.description}</p>
+                    <div className="zone-meta">
+                      <span className="online-badge" data-empty={n === 0}>
+                        <i className="online-dot"></i>
+                        {n > 0 ? `${n} online` : 'Be the first'}
+                      </span>
+                      <span className="zone-size">{z.dimensions}</span>
+                    </div>
+                  </div>
+                  <button className="zone-enter" onClick={() => handleEnterRoom(z.id)}>
+                    Enter →
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
+        <footer className="cozy-footer">🌙 made for cozy hangouts — be kind out there ✨</footer>
       </main>
 
       {/* Create Room Modal */}

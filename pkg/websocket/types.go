@@ -12,6 +12,7 @@ const (
 	TypeMovement         MessageType = "movement"
 	TypeMovementRejected MessageType = "movement-rejected"
 	TypeUserLeft         MessageType = "user-left"
+	TypeHi               MessageType = "hi"
 )
 
 // IncomingMessage represents a message from client
@@ -91,4 +92,11 @@ type ChatPayload struct {
 	UserID   string `json:"userId"`
 	Username string `json:"username"`
 	Message  string `json:"message"`
+}
+
+// HiPayload tells a client that another player just said hi (came close).
+// Username is the OTHER player's name from the recipient's point of view.
+type HiPayload struct {
+	UserID   string `json:"userId"`
+	Username string `json:"username"`
 }

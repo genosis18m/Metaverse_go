@@ -49,10 +49,14 @@ export default function Arena({ token, userId, username }: ArenaProps) {
   const [chatInput, setChatInput] = useState('')
   const [connected, setConnected] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [toasts, setToasts] = useState<{ id: number; text: string }[]>([])
 
   // Keep refs to state so handleMessage never has a stale closure
   const usersRef = useRef<Map<string, User>>(new Map())
   const myUsernameRef = useRef(displayName)
+  // Cooldown so a single approach doesn't spam repeated "hi" popups
+  const lastHiRef = useRef<Record<string, number>>({})
+  const toastIdRef = useRef(0)
 
   const addSystemMessage = useCallback((text: string) => {
     setMessages(prev => [...prev, {
@@ -61,6 +65,12 @@ export default function Arena({ token, userId, username }: ArenaProps) {
       message: text,
       timestamp: new Date()
     }])
+  }, [])
+
+  const showToast = useCallback((text: string) => {
+    const id = ++toastIdRef.current
+    setToasts(prev => [...prev, { id, text }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500)
   }, [])
 
   // handleMessage is defined with useCallback and uses refs for state, not stale closures
@@ -159,8 +169,19 @@ export default function Arena({ token, userId, username }: ArenaProps) {
           timestamp: new Date()
         }])
         break
+
+      case 'hi': {
+        const from = msg.payload.username || 'Someone'
+        const fromId = msg.payload.userId || from
+        const now = Date.now()
+        // Ignore repeat greetings from the same person within 4s
+        if (now - (lastHiRef.current[fromId] || 0) < 4000) break
+        lastHiRef.current[fromId] = now
+        showToast(`👋 ${from} sent a hi to you`)
+        break
+      }
     }
-  }, [userId, addSystemMessage])
+  }, [userId, addSystemMessage, showToast])
 
   // Keep a ref to handleMessage so the WS onmessage always calls the latest version
   const handleMessageRef = useRef(handleMessage)
@@ -355,7 +376,13 @@ export default function Arena({ token, userId, username }: ArenaProps) {
   return (
     <div className="arena-container" style={{position: 'relative', overflow: 'hidden'}}>
       {renderBackground()}
-      
+
+      <div className="toast-stack" aria-live="polite">
+        {toasts.map(t => (
+          <div key={t.id} className="toast">{t.text}</div>
+        ))}
+      </div>
+
       <div style={{position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column'}}>
         <header className="arena-header" style={{background: 'rgba(26, 26, 46, 0.8)', backdropFilter: 'blur(5px)'}}>
           <button className="back-btn" onClick={() => navigate('/dashboard')}>
@@ -387,6 +414,12 @@ export default function Arena({ token, userId, username }: ArenaProps) {
           <div className="chat-section" style={{width: '35%', minWidth: '280px', maxWidth: '400px'}}>
             <h3>💬 Chat</h3>
             <div className="chat-messages" ref={chatMessagesRef}>
+              {messages.length === 0 && (
+                <div className="chat-empty">
+                  <span className="chat-empty-emoji">🌱</span>
+                  <p>It's quiet here. Say hi to start the conversation!</p>
+                </div>
+              )}
               {messages.map((msg, i) => (
                 <div key={i} className={`chat-msg ${msg.userId === 'SYSTEM' ? 'system' : msg.userId === userId ? 'self' : ''}`}>
                   {msg.userId !== 'SYSTEM' && (
