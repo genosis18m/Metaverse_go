@@ -54,7 +54,8 @@ func (rm *RoomManager) RemoveUser(user *User, spaceID string) {
 	rm.rooms[spaceID] = newUsers
 }
 
-// GetRoomUsers returns all users in a room
+// GetRoomUsers returns a snapshot copy of all users in a room.
+// Returning a copy lets callers iterate safely after the lock is released.
 func (rm *RoomManager) GetRoomUsers(spaceID string) []*User {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
@@ -63,23 +64,43 @@ func (rm *RoomManager) GetRoomUsers(spaceID string) []*User {
 	if !exists {
 		return []*User{}
 	}
-	return users
+	snapshot := make([]*User, len(users))
+	copy(snapshot, users)
+	return snapshot
 }
 
-// Broadcast sends a message to all users in a room except the sender
-func (rm *RoomManager) Broadcast(message OutgoingMessage, sender *User, spaceID string) {
+// Counts returns the number of connected users in each room.
+func (rm *RoomManager) Counts() map[string]int {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
 
+	counts := make(map[string]int, len(rm.rooms))
+	for spaceID, users := range rm.rooms {
+		counts[spaceID] = len(users)
+	}
+	return counts
+}
+
+// Broadcast sends a message to all users in a room except the sender.
+// Recipients are snapshotted under the lock, then written to with the lock
+// released — a slow or blocked client must never stall room mutations.
+func (rm *RoomManager) Broadcast(message OutgoingMessage, sender *User, spaceID string) {
+	rm.mu.RLock()
 	users, exists := rm.rooms[spaceID]
 	if !exists {
+		rm.mu.RUnlock()
 		return
 	}
-
+	recipients := make([]*User, 0, len(users))
 	for _, user := range users {
 		// If sender is nil, broadcast to everyone. Otherwise skip sender.
 		if sender == nil || user.ID != sender.ID {
-			user.Send(message)
+			recipients = append(recipients, user)
 		}
+	}
+	rm.mu.RUnlock()
+
+	for _, user := range recipients {
+		user.Send(message)
 	}
 }

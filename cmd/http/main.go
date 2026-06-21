@@ -30,6 +30,9 @@ func main() {
 	}
 	log.Println("Database tables migrated successfully")
 
+	// Ensure the public hangout zones exist
+	handlers.SeedFeaturedRooms()
+
 	// Initialize Gin router
 	r := gin.Default()
 
@@ -58,6 +61,7 @@ func main() {
 		v1.POST("/signin", handlers.Signin)
 		v1.GET("/elements", handlers.GetElements)
 		v1.GET("/avatars", handlers.GetAvatars)
+		v1.GET("/rooms/featured", handlers.GetFeaturedRooms)
 
 		// Google OAuth routes
 		v1.GET("/auth/google", handlers.GoogleAuthURL)

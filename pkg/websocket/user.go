@@ -3,6 +3,7 @@ package websocket
 import (
 	"encoding/json"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -96,11 +97,11 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 		return
 	}
 	
-	// Use displayName from payload if provided, otherwise use DB username
-	if payload.DisplayName != "" {
-		u.Username = payload.DisplayName
-	} else {
-		u.Username = dbUser.Username
+	// Default to the canonical DB username, but honor a chosen display name
+	// (custom or randomly generated) so people can join under a pseudonym.
+	u.Username = dbUser.Username
+	if dn := strings.TrimSpace(payload.DisplayName); dn != "" {
+		u.Username = dn
 	}
 
 	// Find space
@@ -141,14 +142,35 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	var messages []models.Message
 	database.GetDB().Where("space_id = ?", spaceID).Order("created_at desc").Limit(50).Find(&messages)
 
+	// Resolve all usernames in a single query to avoid an N+1 lookup per message.
+	usernameByID := make(map[string]string)
+	if len(messages) > 0 {
+		seen := make(map[string]struct{}, len(messages))
+		userIDs := make([]string, 0, len(messages))
+		for _, msg := range messages {
+			if _, ok := seen[msg.UserID]; !ok {
+				seen[msg.UserID] = struct{}{}
+				userIDs = append(userIDs, msg.UserID)
+			}
+		}
+		var msgUsers []models.User
+		database.GetDB().Where("id IN ?", userIDs).Find(&msgUsers)
+		for _, mu := range msgUsers {
+			usernameByID[mu.ID] = mu.Username
+		}
+	}
+
 	// Convert to ChatMessage struct (reverse order to show oldest first)
 	chatHistory := make([]ChatMessage, len(messages))
 	for i, msg := range messages {
-		// Look up username for each message
-		var msgUser models.User
-		username := msg.UserID // fallback to ID
-		if err := database.GetDB().First(&msgUser, "id = ?", msg.UserID).Error; err == nil {
-			username = msgUser.Username
+		// Prefer the pseudonym stored with the message; fall back to the
+		// account username (older messages) and finally the raw ID.
+		username := msg.Username
+		if username == "" {
+			username = usernameByID[msg.UserID]
+		}
+		if username == "" {
+			username = msg.UserID
 		}
 		chatHistory[len(messages)-1-i] = ChatMessage{
 			UserID:    msg.UserID,
@@ -162,9 +184,10 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	u.Send(OutgoingMessage{
 		Type: TypeSpaceJoined,
 		Payload: SpaceJoinedPayload{
-			Spawn:    SpawnPoint{X: u.X, Y: u.Y},
-			Users:    userInfos,
-			Messages: chatHistory,
+			Spawn:      SpawnPoint{X: u.X, Y: u.Y},
+			Users:      userInfos,
+			Messages:   chatHistory,
+			MyUsername: u.Username, // canonical DB username
 		},
 	})
 
@@ -229,6 +252,7 @@ func (u *User) handleChat(payload IncomingMessagePayload) {
 		ID:        utils.GenerateCUID(),
 		Text:      payload.Message,
 		UserID:    u.UserID,
+		Username:  u.Username, // store the display name (pseudonym) shown at send time
 		SpaceID:   u.SpaceID,
 		CreatedAt: time.Now(),
 	}

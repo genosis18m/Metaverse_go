@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -61,6 +62,14 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+
+	// Live per-room online counts (read by the dashboard's hangout zones).
+	http.HandleFunc("/counts", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(ws.GetRoomManager().Counts())
+	})
+
 	http.HandleFunc("/", handleWebSocket)
 
 	log.Printf("WebSocket Server starting on port %s", port)

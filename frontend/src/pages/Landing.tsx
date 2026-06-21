@@ -67,7 +67,14 @@ export default function Landing({ onLogin }: LandingProps) {
       <div className="landing-content">
         <div className="landing-hero">
           <h1 className="glitch-logo">METAVERSE</h1>
-          <p>Create rooms, invite friends, chat and explore together!</p>
+          <p>Anonymous hangout zones — make a room, bring your people, wander and talk.</p>
+          <div className="ambient-street" aria-hidden="true">
+            <span className="stroller"></span>
+            <span className="stroller"></span>
+            <span className="stroller"></span>
+            <span className="stroller"></span>
+            <span className="stroller"></span>
+          </div>
         </div>
 
         <div className="wrapper">
@@ -158,7 +165,7 @@ export default function Landing({ onLogin }: LandingProps) {
             </label>
           </div>
         </div>
-        <div className="landing-features" style={{marginTop: '4rem'}}> 
+        <div className="landing-features">
           <div className="feature">
             <span className="feature-icon">🏠</span>
             <h3>Create Rooms</h3>

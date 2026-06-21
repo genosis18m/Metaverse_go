@@ -5,12 +5,23 @@ import Loader from '../components/Loader'
 import RoomEntryModal from '../components/RoomEntryModal'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+// The WS server exposes live room counts over plain HTTP on the same host.
+const WS_HTTP = (import.meta.env.VITE_WS_URL || 'ws://localhost:3001').replace(/^ws/, 'http')
 
 interface Space {
   id: string
   name: string
   dimensions: string
   thumbnail?: string
+}
+
+interface FeaturedRoom {
+  id: string
+  name: string
+  emoji: string
+  description: string
+  dimensions: string
+  accent: string
 }
 
 interface DashboardProps {
@@ -44,10 +55,32 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   // Rooms drawer state
   const [showRoomsDrawer, setShowRoomsDrawer] = useState(false)
 
+  // Featured public hangout zones + their live online counts
+  const [featured, setFeatured] = useState<FeaturedRoom[]>([])
+  const [counts, setCounts] = useState<Record<string, number>>({})
+
   useEffect(() => {
     fetchSpaces()
     fetchProfile()
+    fetchFeatured()
   }, [])
+
+  const fetchFeatured = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/rooms/featured`)
+      const data = await res.json()
+      setFeatured(data.rooms || [])
+    } catch (err) {
+      console.error('Failed to fetch zones:', err)
+    }
+    // Online counts come from the WS server; best-effort, shown initially.
+    try {
+      const res = await fetch(`${WS_HTTP}/counts`)
+      if (res.ok) setCounts(await res.json())
+    } catch {
+      /* WS server may be down — zones still render without counts */
+    }
+  }
 
   const fetchProfile = async () => {
     try {
@@ -238,7 +271,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       <header className="dashboard-header" style={{background: 'rgba(26, 26, 46, 0.8)', backdropFilter: 'blur(5px)', width: '100%'}}>
         <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
           <h1 className="glitch-logo" style={{fontSize: '1.8rem'}}>METAVERSE</h1>
-          {currentUsername && <span style={{color: '#4ECDC4'}}>Welcome, {currentUsername}!</span>}
+          {currentUsername && <span className="welcome">Welcome, {currentUsername}!</span>}
           <button 
             className="action-btn" 
             style={{padding: '0.5rem', fontSize: '1.2rem', background: 'transparent', border: 'none', cursor: 'pointer'}}
@@ -256,81 +289,51 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         <button className="logout-btn" onClick={onLogout}>Logout</button>
       </header>
 
-      <main className="dashboard-main" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', padding: '2rem'}}>
+      <main className="dashboard-main">
+        <section className="dash-hero">
+          <h2>Anonymous hangout zones</h2>
+          <p>Drop into a public zone where nobody needs your real name — or spin up a room of your own.</p>
+        </section>
+
+        <section className="zones-section">
+          <div className="section-title">Public zones</div>
+          <div className="zone-grid">
+            {featured.map(z => {
+              const n = counts[z.id] || 0
+              return (
+                <div key={z.id} className="zone-card" data-accent={z.accent}>
+                  <div className="zone-emoji">{z.emoji}</div>
+                  <div className="zone-body">
+                    <h3>{z.name}</h3>
+                    <p>{z.description}</p>
+                    <div className="zone-meta">
+                      <span className="online-badge" data-empty={n === 0}>
+                        <i className="online-dot"></i>
+                        {n > 0 ? `${n} online` : 'Be the first'}
+                      </span>
+                      <span className="zone-size">{z.dimensions}</span>
+                    </div>
+                  </div>
+                  <button className="zone-enter" onClick={() => handleEnterRoom(z.id)}>
+                    Enter →
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
         <div className="dashboard-actions" style={{display: 'flex', gap: '1rem', justifyContent: 'center'}}>
-          <button 
-            onClick={() => setShowCreateModal(true)}
-            style={{
-              fontFamily: 'inherit',
-              border: 'none',
-              outline: '1px dotted rgb(37, 37, 37)',
-              outlineOffset: '-4px',
-              cursor: 'pointer',
-              background: 'hsl(120deg 40% 65%)',
-              boxShadow: 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(100, 180, 100), inset 2px 2px #ffffff',
-              fontSize: '16px',
-              textTransform: 'uppercase',
-              letterSpacing: '2px',
-              padding: '12px 40px'
-            }}
-            onMouseDown={(e) => {
-              e.currentTarget.style.boxShadow = 'inset -1px -1px #fff, inset 1px 1px #292929, inset -2px -2px #ffffff, inset 2px 2px rgb(100, 180, 100)'
-            }}
-            onMouseUp={(e) => {
-              e.currentTarget.style.boxShadow = 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(100, 180, 100), inset 2px 2px #ffffff'
-            }}
-          >
-            ➕ Create Room
+          <button className="arcade-btn arcade-btn--create" onClick={() => setShowCreateModal(true)}>
+            ➕ Create room
           </button>
-          <button 
-            onClick={() => setShowJoinModal(true)}
-            style={{
-              fontFamily: 'inherit',
-              border: 'none',
-              outline: '1px dotted rgb(37, 37, 37)',
-              outlineOffset: '-4px',
-              cursor: 'pointer',
-              background: 'hsl(200deg 50% 70%)',
-              boxShadow: 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(100, 150, 200), inset 2px 2px #ffffff',
-              fontSize: '16px',
-              textTransform: 'uppercase',
-              letterSpacing: '2px',
-              padding: '12px 40px'
-            }}
-            onMouseDown={(e) => {
-              e.currentTarget.style.boxShadow = 'inset -1px -1px #fff, inset 1px 1px #292929, inset -2px -2px #ffffff, inset 2px 2px rgb(100, 150, 200)'
-            }}
-            onMouseUp={(e) => {
-              e.currentTarget.style.boxShadow = 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(100, 150, 200), inset 2px 2px #ffffff'
-            }}
-          >
-            🚪 Join Room
+          <button className="arcade-btn arcade-btn--join" onClick={() => setShowJoinModal(true)}>
+            🚪 Join room
           </button>
         </div>
 
-        <button 
-          onClick={() => setShowRoomsDrawer(!showRoomsDrawer)}
-          style={{
-            fontFamily: 'inherit',
-            border: 'none',
-            outline: '1px dotted rgb(37, 37, 37)',
-            outlineOffset: '-4px',
-            cursor: 'pointer',
-            background: 'hsl(280deg 40% 70%)',
-            boxShadow: 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(150, 100, 180), inset 2px 2px #ffffff',
-            fontSize: '16px',
-            textTransform: 'uppercase',
-            letterSpacing: '2px',
-            padding: '12px 50px'
-          }}
-          onMouseDown={(e) => {
-            e.currentTarget.style.boxShadow = 'inset -1px -1px #fff, inset 1px 1px #292929, inset -2px -2px #ffffff, inset 2px 2px rgb(150, 100, 180)'
-          }}
-          onMouseUp={(e) => {
-            e.currentTarget.style.boxShadow = 'inset -1px -1px #292929, inset 1px 1px #fff, inset -2px -2px rgb(150, 100, 180), inset 2px 2px #ffffff'
-          }}
-        >
-          📁 Your Rooms {showRoomsDrawer ? '▲' : '▼'}
+        <button className="arcade-btn arcade-btn--rooms" onClick={() => setShowRoomsDrawer(!showRoomsDrawer)}>
+          📁 Your rooms {showRoomsDrawer ? '▲' : '▼'}
         </button>
 
         <div 
@@ -392,7 +395,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
             {isSubmitting ? (
                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem'}}>
                  <Loader />
-                 <p style={{marginTop: '1rem', color: '#666'}}>Creating your room...</p>
+                 <p style={{marginTop: '1rem', color: 'var(--text-dim)'}}>Creating your room...</p>
                </div>
             ) : (
                 <>
@@ -440,7 +443,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
             {isSubmitting ? (
                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem'}}>
                  <Loader />
-                 <p style={{marginTop: '1rem', color: '#666'}}>Joining room...</p>
+                 <p style={{marginTop: '1rem', color: 'var(--text-dim)'}}>Joining room...</p>
                </div>
             ) : (
                 <>

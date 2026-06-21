@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import '../index.css'
 
@@ -33,13 +33,16 @@ export default function Arena({ token, userId, username }: ArenaProps) {
   const { spaceId } = useParams<{ spaceId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
+  // The display name chosen in the room-entry modal (custom / random / account)
+  const displayName = (location.state as { displayName?: string } | null)?.displayName || username
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const chatInputRef = useRef<HTMLInputElement>(null)
-  
-  // Get displayName from route state, fallback to username
-  const displayName = (location.state as any)?.displayName || username
-  
+  const chatMessagesRef = useRef<HTMLDivElement>(null)
+
+  // The display name the server confirms back on join (defaults to the chosen one)
+  const [myUsername, setMyUsername] = useState(displayName)
+
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [users, setUsers] = useState<Map<string, User>>(new Map())
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -47,42 +50,35 @@ export default function Arena({ token, userId, username }: ArenaProps) {
   const [connected, setConnected] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    if (!spaceId || !token) return
+  // Keep refs to state so handleMessage never has a stale closure
+  const usersRef = useRef<Map<string, User>>(new Map())
+  const myUsernameRef = useRef(displayName)
 
-    wsRef.current = new WebSocket(WS_URL)
-    
-    wsRef.current.onopen = () => {
-      setConnected(true)
-      wsRef.current?.send(JSON.stringify({
-        type: 'join',
-        payload: { spaceId, token, displayName }
-      }))
-    }
+  const addSystemMessage = useCallback((text: string) => {
+    setMessages(prev => [...prev, {
+      userId: 'SYSTEM',
+      username: 'SYSTEM',
+      message: text,
+      timestamp: new Date()
+    }])
+  }, [])
 
-    wsRef.current.onmessage = (event) => {
-      const message = JSON.parse(event.data)
-      handleMessage(message)
-    }
-
-    wsRef.current.onclose = () => {
-      setConnected(false)
-    }
-
-    return () => {
-      wsRef.current?.close()
-    }
-  }, [spaceId, token])
-
-  const handleMessage = (msg: { type: string; payload: any }) => {
+  // handleMessage is defined with useCallback and uses refs for state, not stale closures
+  const handleMessage = useCallback((msg: { type: string; payload: any }) => {
     switch (msg.type) {
-      case 'space-joined':
+      case 'space-joined': {
+        // The backend always sends the canonical DB username — use it
+        const serverUsername = msg.payload.myUsername || myUsernameRef.current
+        myUsernameRef.current = serverUsername
+        setMyUsername(serverUsername)
+
         setCurrentUser({
           x: msg.payload.spawn.x,
           y: msg.payload.spawn.y,
           userId,
-          username: displayName || username || userId.slice(0, 8)
+          username: serverUsername
         })
+
         const userMap = new Map<string, User>()
         msg.payload.users?.forEach((u: any) => {
           if (u.userId) userMap.set(u.userId, {
@@ -92,59 +88,68 @@ export default function Arena({ token, userId, username }: ArenaProps) {
             username: u.username || u.userId.slice(0, 8)
           })
         })
+        usersRef.current = userMap
         setUsers(userMap)
-        
+
         // Set historical messages if available
         if (msg.payload.messages) {
-           const history = msg.payload.messages.map((m: any) => ({
-             userId: m.userId,
-             username: m.username || m.userId.slice(0, 8),
-             message: m.message,
-             timestamp: new Date(m.timestamp)
-           }))
-           setMessages(history)
+          const history = msg.payload.messages.map((m: any) => ({
+            userId: m.userId,
+            username: m.username || m.userId.slice(0, 8),
+            message: m.message,
+            timestamp: new Date(m.timestamp)
+          }))
+          setMessages(history)
         }
         break
+      }
 
-      case 'user-joined':
+      case 'user-joined': {
+        const joinedUser: User = {
+          x: msg.payload.x,
+          y: msg.payload.y,
+          userId: msg.payload.userId,
+          username: msg.payload.username || msg.payload.userId.slice(0, 8)
+        }
         setUsers(prev => {
           const newUsers = new Map(prev)
-          newUsers.set(msg.payload.userId, {
-            x: msg.payload.x,
-            y: msg.payload.y,
-            userId: msg.payload.userId,
-            username: msg.payload.username || msg.payload.userId.slice(0, 8)
-          })
+          newUsers.set(msg.payload.userId, joinedUser)
+          usersRef.current = newUsers
           return newUsers
         })
-        addSystemMessage(`${msg.payload.username || msg.payload.userId.slice(0, 8)} joined`)
+        addSystemMessage(`${joinedUser.username} joined`)
         break
+      }
 
-      case 'movement':
+      case 'movement': {
         setUsers(prev => {
           const newUsers = new Map(prev)
           const user = newUsers.get(msg.payload.userId)
           if (user) {
             newUsers.set(msg.payload.userId, { ...user, x: msg.payload.x, y: msg.payload.y })
           }
+          usersRef.current = newUsers
           return newUsers
         })
         break
+      }
 
       case 'movement-rejected':
         setCurrentUser(prev => prev ? { ...prev, x: msg.payload.x, y: msg.payload.y } : null)
         break
 
-      case 'user-left':
-        const leftUser = users.get(msg.payload.userId)
+      case 'user-left': {
+        const leftUser = usersRef.current.get(msg.payload.userId)
         const leftUsername = leftUser?.username || msg.payload.userId.slice(0, 8)
         setUsers(prev => {
           const newUsers = new Map(prev)
           newUsers.delete(msg.payload.userId)
+          usersRef.current = newUsers
           return newUsers
         })
         addSystemMessage(`${leftUsername} left`)
         break
+      }
 
       case 'chat':
         setMessages(prev => [...prev, {
@@ -155,58 +160,93 @@ export default function Arena({ token, userId, username }: ArenaProps) {
         }])
         break
     }
-  }
+  }, [userId, addSystemMessage])
 
-  const addSystemMessage = (text: string) => {
-    setMessages(prev => [...prev, {
-      userId: 'SYSTEM',
-      username: 'SYSTEM',
-      message: text,
-      timestamp: new Date()
-    }])
-  }
-
-  const handleMove = (dx: number, dy: number) => {
-    if (!currentUser || !wsRef.current) return
-    const newX = currentUser.x + dx
-    const newY = currentUser.y + dy
-    
-    setCurrentUser(prev => prev ? { ...prev, x: newX, y: newY } : null)
-    
-    wsRef.current.send(JSON.stringify({
-      type: 'move',
-      payload: { x: newX, y: newY }
-    }))
-  }
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    // Only arrow keys work for movement
-    if (e.key.startsWith('Arrow')) {
-      e.preventDefault()
-      switch (e.key) {
-        case 'ArrowUp': handleMove(0, -1); break
-        case 'ArrowDown': handleMove(0, 1); break
-        case 'ArrowLeft': handleMove(-1, 0); break
-        case 'ArrowRight': handleMove(1, 0); break
-      }
-    }
-  }
+  // Keep a ref to handleMessage so the WS onmessage always calls the latest version
+  const handleMessageRef = useRef(handleMessage)
+  useEffect(() => {
+    handleMessageRef.current = handleMessage
+  }, [handleMessage])
 
   useEffect(() => {
+    if (!spaceId || !token) return
+
+    const ws = new WebSocket(WS_URL)
+    wsRef.current = ws
+
+    ws.onopen = () => {
+      setConnected(true)
+      ws.send(JSON.stringify({
+        type: 'join',
+        // Send the chosen display name; backend falls back to the DB username if empty
+        payload: { spaceId, token, displayName }
+      }))
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data)
+        handleMessageRef.current(message)
+      } catch (err) {
+        console.error('Failed to parse WS message', err)
+      }
+    }
+
+    ws.onclose = () => {
+      setConnected(false)
+    }
+
+    return () => {
+      ws.close()
+    }
+  }, [spaceId, token])
+
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight
+    }
+  }, [messages])
+
+  const handleMove = useCallback((dx: number, dy: number) => {
+    setCurrentUser(prev => {
+      if (!prev || !wsRef.current) return prev
+      const newX = prev.x + dx
+      const newY = prev.y + dy
+      wsRef.current.send(JSON.stringify({
+        type: 'move',
+        payload: { x: newX, y: newY }
+      }))
+      return { ...prev, x: newX, y: newY }
+    })
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.startsWith('Arrow')) {
+        e.preventDefault()
+        switch (e.key) {
+          case 'ArrowUp': handleMove(0, -1); break
+          case 'ArrowDown': handleMove(0, 1); break
+          case 'ArrowLeft': handleMove(-1, 0); break
+          case 'ArrowRight': handleMove(1, 0); break
+        }
+      }
+    }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentUser])
+  }, [handleMove])
 
   const sendChat = (e: React.FormEvent) => {
     e.preventDefault()
     if (!chatInput.trim() || !wsRef.current) return
-    
+
     wsRef.current.send(JSON.stringify({
       type: 'chat',
       payload: { message: chatInput }
     }))
-    
-    // Don't add message optimistically - backend will broadcast it back with correct username
+
+    // Don't add optimistically — backend broadcasts back to everyone including sender
     setChatInput('')
   }
 
@@ -223,11 +263,11 @@ export default function Arena({ token, userId, username }: ArenaProps) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    ctx.fillStyle = '#1a1a2e'
+    ctx.fillStyle = '#2a1e49'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     // Grid
-    ctx.strokeStyle = '#2d2d44'
+    ctx.strokeStyle = 'rgba(201, 184, 232, 0.10)'
     for (let i = 0; i <= canvas.width; i += 40) {
       ctx.beginPath()
       ctx.moveTo(i, 0)
@@ -245,40 +285,40 @@ export default function Arena({ token, userId, username }: ArenaProps) {
     if (currentUser) {
       const x = currentUser.x * 40 + 20
       const y = currentUser.y * 40 + 20
-      
-      ctx.shadowColor = '#FF6B6B'
-      ctx.shadowBlur = 15
+
+      ctx.shadowColor = '#ff8a5c'
+      ctx.shadowBlur = 18
       ctx.beginPath()
-      ctx.fillStyle = '#FF6B6B'
+      ctx.fillStyle = '#ff8a5c'
       ctx.arc(x, y, 15, 0, Math.PI * 2)
       ctx.fill()
       ctx.shadowBlur = 0
-      
-      ctx.fillStyle = '#fff'
-      ctx.font = 'bold 10px Arial'
+
+      ctx.fillStyle = '#ece4fb'
+      ctx.font = 'bold 11px Nunito, sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(displayName || username || 'YOU', x, y + 28)
+      ctx.fillText(myUsername || 'YOU', x, y + 28)
     }
 
     // Draw other users
     users.forEach(user => {
       const x = user.x * 40 + 20
       const y = user.y * 40 + 20
-      
-      ctx.shadowColor = '#4ECDC4'
-      ctx.shadowBlur = 10
+
+      ctx.shadowColor = '#7be0c0'
+      ctx.shadowBlur = 12
       ctx.beginPath()
-      ctx.fillStyle = '#4ECDC4'
+      ctx.fillStyle = '#7be0c0'
       ctx.arc(x, y, 15, 0, Math.PI * 2)
       ctx.fill()
       ctx.shadowBlur = 0
-      
-      ctx.fillStyle = '#fff'
-      ctx.font = '9px Arial'
+
+      ctx.fillStyle = '#ece4fb'
+      ctx.font = '10px Nunito, sans-serif'
       ctx.textAlign = 'center'
       ctx.fillText(user.username || user.userId.slice(0, 6), x, y + 28)
     })
-  }, [currentUser, users])
+  }, [currentUser, users, myUsername])
 
   const [bgType, setBgType] = useState(0)
   useEffect(() => {
@@ -346,11 +386,13 @@ export default function Arena({ token, userId, username }: ArenaProps) {
 
           <div className="chat-section" style={{width: '35%', minWidth: '280px', maxWidth: '400px'}}>
             <h3>💬 Chat</h3>
-            <div className="chat-messages">
+            <div className="chat-messages" ref={chatMessagesRef}>
               {messages.map((msg, i) => (
                 <div key={i} className={`chat-msg ${msg.userId === 'SYSTEM' ? 'system' : msg.userId === userId ? 'self' : ''}`}>
                   {msg.userId !== 'SYSTEM' && (
-                    <span className="chat-user">{msg.userId === userId ? (displayName || username || 'You') : msg.username}:</span>
+                    <span className="chat-user">
+                      {msg.userId === userId ? (myUsername || 'You') : msg.username}:
+                    </span>
                   )}
                   <span className="chat-text">{msg.message}</span>
                 </div>

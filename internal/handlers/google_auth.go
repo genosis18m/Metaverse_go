@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +30,18 @@ func GoogleAuthURL(c *gin.Context) {
 	clientID := os.Getenv("GOOGLE_CLIENT_ID")
 	redirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
 
+	// Fail loudly when OAuth isn't configured instead of redirecting the user
+	// to a broken Google consent screen with an empty client_id.
+	if clientID == "" || redirectURL == "" {
+		log.Println("Google OAuth not configured: GOOGLE_CLIENT_ID and/or GOOGLE_REDIRECT_URL is empty")
+		frontendURL := os.Getenv("FRONTEND_URL")
+		if frontendURL == "" {
+			frontendURL = "http://localhost:5173"
+		}
+		c.Redirect(http.StatusTemporaryRedirect, frontendURL+"?error=oauth_not_configured")
+		return
+	}
+
 	authURL := fmt.Sprintf(
 		"https://accounts.google.com/o/oauth2/v2/auth?client_id=%s&redirect_uri=%s&response_type=code&scope=email%%20profile&access_type=offline",
 		clientID,
@@ -45,8 +58,16 @@ func GoogleCallback(c *gin.Context) {
 		frontendURL = "http://localhost:5173" // fallback for local development
 	}
 
+	// Google sends ?error=... when the user denies consent or config is wrong.
+	if oauthErr := c.Query("error"); oauthErr != "" {
+		log.Printf("Google OAuth returned error: %s", oauthErr)
+		c.Redirect(http.StatusTemporaryRedirect, frontendURL+"?error="+oauthErr)
+		return
+	}
+
 	code := c.Query("code")
 	if code == "" {
+		log.Println("Google OAuth callback hit without a code parameter")
 		c.Redirect(http.StatusTemporaryRedirect, frontendURL+"?error=no_code")
 		return
 	}
@@ -54,6 +75,7 @@ func GoogleCallback(c *gin.Context) {
 	// Exchange code for token
 	token, err := exchangeCodeForToken(code)
 	if err != nil {
+		log.Printf("Google OAuth token exchange failed: %v", err)
 		c.Redirect(http.StatusTemporaryRedirect, frontendURL+"?error=token_exchange_failed")
 		return
 	}
@@ -61,6 +83,7 @@ func GoogleCallback(c *gin.Context) {
 	// Get user info from Google
 	userInfo, err := getGoogleUserInfo(token)
 	if err != nil {
+		log.Printf("Google OAuth user-info fetch failed: %v", err)
 		c.Redirect(http.StatusTemporaryRedirect, frontendURL+"?error=user_info_failed")
 		return
 	}
