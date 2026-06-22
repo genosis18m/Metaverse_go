@@ -87,8 +87,9 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	// Validate JWT token
 	claims, err := utils.ValidateToken(token)
 	if err != nil {
-		log.Printf("Invalid token: %v", err)
-		u.conn.Close()
+		// A token signed by the HTTP server but rejected here almost always
+		// means the two services have different JWT_SECRET values.
+		u.failJoin("authentication failed — token rejected (check JWT_SECRET matches the API server)", err)
 		return
 	}
 
@@ -97,8 +98,7 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	// Look up the username from the database
 	var dbUser models.User
 	if err := database.GetDB().First(&dbUser, "id = ?", u.UserID).Error; err != nil {
-		log.Printf("User not found: %v", err)
-		u.conn.Close()
+		u.failJoin("user not found", err)
 		return
 	}
 	
@@ -113,8 +113,7 @@ func (u *User) handleJoin(payload IncomingMessagePayload) {
 	var space models.Space
 	result := database.GetDB().First(&space, "id = ?", spaceID)
 	if result.Error != nil {
-		log.Printf("Space not found: %v", result.Error)
-		u.conn.Close()
+		u.failJoin("room not found", result.Error)
 		return
 	}
 
@@ -304,6 +303,18 @@ func (u *User) handleChat(payload IncomingMessagePayload) {
 			Message:  payload.Message,
 		},
 	}, nil, u.SpaceID) // Pass nil as sender to broadcast to EVERYONE including self
+}
+
+// failJoin reports why a join was refused — it logs the underlying error
+// server-side and sends a typed error frame to the client before closing, so
+// the user sees a reason instead of an avatar that silently never appears.
+func (u *User) failJoin(reason string, err error) {
+	log.Printf("Join refused (%s): %v", reason, err)
+	u.Send(OutgoingMessage{
+		Type:    TypeError,
+		Payload: ErrorPayload{Message: reason},
+	})
+	u.conn.Close()
 }
 
 // Send sends a message to the user

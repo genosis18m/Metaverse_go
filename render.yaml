@@ -1,3 +1,15 @@
+# Shared secrets — both services read from the SAME group so JWT_SECRET (and the
+# DB) can never drift between them. A mismatched JWT_SECRET is the classic cause
+# of "WebSocket connects then the avatar never appears": the HTTP server signs
+# the token with its secret and the WS server rejects it with a different one.
+envVarGroups:
+  - name: metaverse-shared
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Set in dashboard (Neon connection string)
+      - key: JWT_SECRET
+        sync: false # Set ONCE here; both services inherit the same value
+
 services:
   # HTTP Server
   - type: web
@@ -8,16 +20,15 @@ services:
     plan: free
     region: ohio # or frankfurt, oregon, singpore
     envVars:
-      - key: DATABASE_URL
-        sync: false # Set in dashboard
-      - key: JWT_SECRET
-        sync: false # Set in dashboard
+      - fromGroup: metaverse-shared
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_REDIRECT_URL
         sync: false
+      - key: FRONTEND_URL
+        sync: false # Your Vercel origin, for CORS + OAuth redirect
     # Override command to run HTTP server
     dockerCommand: ./http-server
 
@@ -30,10 +41,6 @@ services:
     plan: free
     region: ohio # Must match HTTP server
     envVars:
-      - key: DATABASE_URL
-        sync: false
-      - key: JWT_SECRET
-        sync: false
+      - fromGroup: metaverse-shared
     # Override command to run WebSocket server
     dockerCommand: ./ws-server
-

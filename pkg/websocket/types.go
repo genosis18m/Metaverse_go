@@ -13,6 +13,7 @@ const (
 	TypeMovementRejected MessageType = "movement-rejected"
 	TypeUserLeft         MessageType = "user-left"
 	TypeHi               MessageType = "hi"
+	TypeError            MessageType = "error"
 )
 
 // IncomingMessage represents a message from client
@@ -92,6 +93,12 @@ type ChatPayload struct {
 	UserID   string `json:"userId"`
 	Username string `json:"username"`
 	Message  string `json:"message"`
+}
+
+// ErrorPayload tells the client why the connection is being refused/closed,
+// so a failed join surfaces a reason instead of a silent disconnect.
+type ErrorPayload struct {
+	Message string `json:"message"`
 }
 
 // HiPayload tells a client that another player just said hi (came close).

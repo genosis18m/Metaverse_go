@@ -37,6 +37,9 @@ export default function Arena({ token, userId, username }: ArenaProps) {
   const displayName = (location.state as { displayName?: string } | null)?.displayName || username
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
+  // Set when the server explicitly refuses the join — suppresses reconnect so
+  // we don't loop forever against a bad token / missing room.
+  const joinRefusedRef = useRef(false)
   const chatInputRef = useRef<HTMLInputElement>(null)
   const chatMessagesRef = useRef<HTMLDivElement>(null)
 
@@ -180,6 +183,17 @@ export default function Arena({ token, userId, username }: ArenaProps) {
         showToast(`👋 ${from} sent a hi to you`)
         break
       }
+
+      case 'error': {
+        // The server refused the join (bad token, missing room, etc.) — surface
+        // it instead of leaving the user staring at an empty room.
+        const reason = msg.payload?.message || 'connection refused by server'
+        console.error('[ws] join refused:', reason)
+        joinRefusedRef.current = true
+        addSystemMessage(`⚠️ Could not join: ${reason}`)
+        showToast(`⚠️ ${reason}`)
+        break
+      }
     }
   }, [userId, addSystemMessage, showToast])
 
@@ -192,33 +206,59 @@ export default function Arena({ token, userId, username }: ArenaProps) {
   useEffect(() => {
     if (!spaceId || !token) return
 
-    const ws = new WebSocket(WS_URL)
-    wsRef.current = ws
+    console.log('[ws] connecting to', WS_URL)
+    joinRefusedRef.current = false
+    let disposed = false
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let attempt = 0
 
-    ws.onopen = () => {
-      setConnected(true)
-      ws.send(JSON.stringify({
-        type: 'join',
-        // Send the chosen display name; backend falls back to the DB username if empty
-        payload: { spaceId, token, displayName }
-      }))
-    }
+    const connect = () => {
+      const ws = new WebSocket(WS_URL)
+      wsRef.current = ws
 
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data)
-        handleMessageRef.current(message)
-      } catch (err) {
-        console.error('Failed to parse WS message', err)
+      ws.onopen = () => {
+        attempt = 0
+        setConnected(true)
+        ws.send(JSON.stringify({
+          type: 'join',
+          // Send the chosen display name; backend falls back to the DB username if empty
+          payload: { spaceId, token, displayName }
+        }))
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data)
+          handleMessageRef.current(message)
+        } catch (err) {
+          console.error('Failed to parse WS message', err)
+        }
+      }
+
+      ws.onerror = () => {
+        // The browser fires this when it can't reach WS_URL at all — usually a
+        // wrong/missing VITE_WS_URL (still pointing at localhost) or wrong scheme.
+        console.error('[ws] connection error — check VITE_WS_URL points at the deployed wss:// server')
+      }
+
+      ws.onclose = (event) => {
+        setConnected(false)
+        console.warn(`[ws] closed (code=${event.code}, reason="${event.reason}")`)
+        // Don't retry if we unmounted or the server explicitly refused the join.
+        if (disposed || joinRefusedRef.current) return
+        attempt++
+        const delay = Math.min(1000 * attempt, 5000)
+        console.log(`[ws] reconnecting in ${delay}ms (attempt ${attempt})`)
+        reconnectTimer = setTimeout(connect, delay)
       }
     }
 
-    ws.onclose = () => {
-      setConnected(false)
-    }
+    connect()
 
     return () => {
-      ws.close()
+      disposed = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      wsRef.current?.close()
     }
   }, [spaceId, token])
 
